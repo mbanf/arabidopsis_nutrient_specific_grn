@@ -1,5 +1,7 @@
 ## nutrition specific gene expression data 
 exps <- c("-P / +Fe (3h)", "-P / +Fe (6h)", "-P / +Fe (9h)",  "+P / -Fe (3h)", "+P / -Fe (6h)", "+P / -Fe (9h)", "-P / -Fe (3h)", "-P / -Fe (6h)", "-P / -Fe (9h)")
+ill_defined <- c("UNIDENTIFIED", "AMBIGUOUS", "RESCUE")
+
 
 df.geneontology <- read.csv("data/Table annotation_INITIAL.csv", stringsAsFactors = FALSE) #read.table("Table annotation_INITIAL.txt", header = TRUE, sep = "\t", quote = "")
 
@@ -27,7 +29,8 @@ m.anova.set <- m.anova.set[,c(1,4,7,2,5,8,3,6,9)]
 m.anova.set <- m.anova.set[which(rowSums(m.anova.set) > 0),]  ## subset of diff. expr. genes 
 
 gns.DE <- rownames(m.anova.set)
-
+gns.DE <- gns.DE[!gns.DE %in% ill_defined]
+m.anova.set <- m.anova.set[gns.DE, ]
 
 ### raw gene expression data ### 
 df.geneExp <- read.csv("data/geneExpData.csv", header = TRUE, stringsAsFactors = FALSE)
@@ -135,9 +138,12 @@ library(colorspace) # diverge_hcl / rainbow_hcl / heat_hcl color palettes
 # library(dendextend)
 # library(colorspace)
 # distance & hierarchical clustering
+
+dev.off()
+
 c_group <- 8 # number of clusters
 hc <- hclust(dist(F_m2))
-ct <- cutree(hc, k = num_clusters)
+ct <- cutree(hc, k = c_group)
 
 dend1 <- as.dendrogram(hc)
 dend1 <- color_branches(dend1, k = c_group, col = rainbow_hcl) # add color to the lines
@@ -184,15 +190,76 @@ heatmap.2(F_m2, main = '',
 )
 
 ##### gsea of gene clusters ### 
-for(j in 1:length(c_group)){
- 
-   v.gns <- names(which(ct == j))
+
+df.cluster <- 
+
+for(j in 1:c_group){
   
-   # arabidopsis gene
+   # TODO: store the number of genes per cluster as a general excel
+   v.gns <- names(which(ct == j))
    
+   
+   
+   go_functions(v.gns, 0.1)
+   
+   
+  #  v.tfs %in% v.gns
+  #  
+  #  if(rsk1 %in% v.gns){
+  #    
+  #    
+  #    print(j)
+  # 
+  #    # TODO: add the specific genes per biological process => more importantly store with the cluster id as file name
+  #    go_functions(v.gns, 0.05)
+  # }
       
 }
 
 
+## all genes gsea 
+go_functions(gns.DE, 0.1)
+# 
+# "AT5G01770" %in% gns.DE
+# "AT3G08850" %in% gns.DE
 
+
+
+####### Gene regulatory network inference (CO-diff) ###
+
+
+
+df.regulatoryNetwork.meta["coDiffExp_0PF"] <- 0
+df.regulatoryNetwork.meta["coDiffExp_P0F"] <- 0
+df.regulatoryNetwork.meta["coDiffExp_0P0F"] <- 0
+df.regulatoryNetwork.meta["coDiffExp"] <- 0
+
+df.regulatoryNetwork <- c()
+
+for(j in 1:length(tfs.DE)){
+  
+  df.regulatoryNetwork.j <- subset(df.regulatoryNetwork.meta, df.regulatoryNetwork.meta$tf ==  tfs.DE[j])
+  i.min <- min(which(m.anova.set[tfs.DE[j], 1:3] == 1))
+  if(i.min != Inf){
+    tgs.de <- rownames(m.anova.set)[which(rowSums(m.anova.set[, i.min:3]) >= 1)]
+    i.set <- which(df.regulatoryNetwork.j$target %in% tgs.de)
+    df.regulatoryNetwork.j$coDiffExp_0PF[i.set] <- 1
+  }
+
+  i.min <- min(which(m.anova.set[tfs.DE[j], 4:6] == 1))
+  if(i.min != Inf){
+    tgs.de <- rownames(m.anova.set)[which(rowSums(m.anova.set[, i.min:3]) >= 1)]
+    i.set <- which(df.regulatoryNetwork.j$target %in% tgs.de)
+    df.regulatoryNetwork.j$coDiffExp_P0F[i.set] <- 1
+  }
+  
+  i.min <- min(which(m.anova.set[tfs.DE[j], 7:9] == 1))
+  if(i.min != Inf){
+    tgs.de <- rownames(m.anova.set)[which(rowSums(m.anova.set[, i.min:3]) >= 1)]
+    i.set <- which(df.regulatoryNetwork.j$target %in% tgs.de)
+    df.regulatoryNetwork.j$coDiffExp_0P0F[i.set] <- 1
+  }
+  df.regulatoryNetwork.j$coDiffExp <- pmax(pmax(df.regulatoryNetwork.j$coDiffExp_0PF, df.regulatoryNetwork.j$coDiffExp_P0F), df.regulatoryNetwork.j$coDiffExp_0P0F)
+  df.regulatoryNetwork <- rbind(df.regulatoryNetwork, df.regulatoryNetwork.j)
+}
 
