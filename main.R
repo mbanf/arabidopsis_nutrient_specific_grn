@@ -1,4 +1,280 @@
 
+# main, gene regulatory network
+
+library(reshape2)
+library(ggplot2)
+
+
+
+source("nutrition_differential_expression.R")
+source("transcriptional_regulators.R")
+source("gsea.R")
+
+
+
+
+##### gsea of gene clusters ### 
+
+for(j in 1:c_group){
+  v.gns <- names(which(ct == j))
+  go_gsea(v.gns, th = 0.1, ontology = "BP")
+  go_gsea(v.gns, th = 0.1, ontology = "MF")
+}
+
+
+## all genes gsea 
+go_gsea(gns.DE, th = 0.1, ontology = "BP")
+go_gsea(gns.DE, th = 0.1, ontology = "MF")
+
+gns <- names(V(g))
+specs <- gn_spec[gns]
+
+c_group <- sort(unique(specs))
+
+for(s in 1:length(code_specificity)){
+  
+  gn = names(which(specs == s))
+  go_gsea(gn, th = 0.05, title = paste("Biological process of", length(gn), "genes specific to", names(code_specificity)[s]), ontology = "BP")
+  go_gsea(gn, th = 0.05, title = paste("Molecular function of", length(gn), "genes specific to", names(code_specificity)[s]),  ontology = "MF")
+  
+}
+
+
+
+cols_specificity[gn_spec[]]
+
+
+### gene regulatory network  ###
+
+### nutrition differential expression based network ### 
+
+tgs <- intersect(rownames(m.de), gns.DE)
+tfs <- intersect(names(v.regulators), gns.DE)
+
+### gene specificities
+gn_spec <- rep(0, length(tgs))
+names(gn_spec) <- tgs
+
+for(i in 1:length(tgs)){
+  
+  gn = tgs[i]
+  npf <- min(1,sum(m.anova.set[gn, 1:3]))
+  pnf <- min(1,sum(m.anova.set[gn, 4:6]))
+  npnf <- min(1,sum(m.anova.set[gn, 7:9])) 
+  
+  
+  if(npf == 1 & pnf == 0 & npnf == 0){
+    gn_spec[i] <- 1}
+  
+  if(npf == 0 & pnf == 1 & npnf == 0){
+    gn_spec[i] <- 2}
+  
+  if(npf == 0 & pnf == 0 & npnf == 1){
+    gn_spec[i] <- 3}
+  
+  if(npf == 1 & pnf == 1 & npnf == 0){
+    gn_spec[i] <- 4}
+  
+  if(npf == 1 & pnf == 0 & npnf == 1){
+    gn_spec[i] <- 5}
+  
+  if(npf == 0 & pnf == 1 & npnf == 1){
+    gn_spec[i] <- 6}
+  
+  if(npf == 1 & pnf == 1 & npnf == 1){
+    gn_spec[i] <- 7}
+  
+}
+
+table(gn_spec)
+
+### TODO: change node types - regulators and targets 
+
+
+
+
+
+### network
+
+df.grn <- c()
+
+for(j in 1:length(tfs)){
+  
+  tf <- tfs[j]
+  df.grn.j <- data.frame(TF=rep(tf,length(tgs)), TG=tgs)
+  df.grn.j["0PF"] <- 0
+  df.grn.j["P0F"] <- 0
+  df.grn.j["0P0F"] <- 0
+  # df.grn.j["mode"] <- 0
+  
+  i.min <- min(which(m.anova.set[tf, 1:3] == 1))
+  
+  if(i.min != Inf){
+    
+    tgs.de <- intersect(tgs, rownames(m.anova.set)[which(rowSums(m.anova.set[, i.min:3]) >= 1)])
+    idx = which(df.grn.j$TG %in% tgs.de)
+    df.grn.j$`0PF`[idx] <- 1
+    
+    # for(i in 1:length(tgs.de)){
+    #   idx <- min(which(m.anova.set[tgs.de[i], 1:3] == 1))
+    #   df.grn.j$mode[i] <- sign(m.de[tf, i.min]) * sign(m.de[tgs.de[i], idx])
+    # }
+    
+  }
+  
+  
+  i.min <- min(which(m.anova.set[tf, 4:6] == 1))
+  
+  if(i.min != Inf){
+    
+    tgs.de <- intersect(tgs, rownames(m.anova.set)[which(rowSums(m.anova.set[, (3 + i.min):6]) >= 1)])
+    idx = which(df.grn.j$TG %in% tgs.de)
+    df.grn.j$P0F[idx] <- 1
+    
+    # for(i in 1:length(tgs.de)){
+    #   idx <- min(which(m.anova.set[tgs.de[i], (3 + i.min):6] == 1))
+    #   df.grn.j$mode[i] <- sign(m.de[tf, i.min]) * sign(m.de[tgs.de[i], idx])
+    # }
+    
+  }
+  
+  
+  i.min <- min(which(m.anova.set[tf, 7:9] == 1))
+  
+  if(i.min != Inf){
+    
+    tgs.de <- intersect(tgs, rownames(m.anova.set)[which(rowSums(m.anova.set[, (6 + i.min):9]) >= 1)])
+    idx = which(df.grn.j$TG %in% tgs.de)
+    df.grn.j$`0P0F`[idx] <- 1
+    
+    # for(i in 1:length(tgs.de)){
+    #   idx <- min(which(m.anova.set[tgs.de[i], (6 + i.min):9] == 1))
+    #   df.grn.j$mode[i] <- sign(m.de[tf, i.min]) * sign(m.de[tgs.de[i], idx])
+    # }
+    
+  }
+  
+  if(length(df.grn.j) > 0){
+    # df.grn.j$coDiffExp <- pmax(pmax(df.grn.j$`0PF`, df.grn.j$P0F), df.grn.j$`0P0F`)
+    df.grn <- rbind(df.grn, df.grn.j)
+  }
+}
+
+# write.csv(df.grn, "manuscript/codifferential_expression/df.grn.codifferential.csv", row.names = FALSE)
+
+
+### create the entire network -> complete 0.5 
+df.code <- df.grn
+df.code <- df.code[which(rowSums(df.code[,3:5]) > 0),]
+
+
+# TF        TG      val spec
+# 3055 AT5G61430 AT5G54230 1.850967    0
+# 2718 AT1G77200 AT5G06750 1.845253    0
+
+
+### co-diff heatmaps #### 
+
+tfs <-  unique(df.grn$TF)
+
+l.p.tgs <- vector(mode = "list", length = length(tfs))
+
+for(r in 1:length(tfs)){
+  
+  df <- subset(df.grn, df.grn$TF == tfs[r])
+  df <- subset(df, df$TF != df$TG)
+  tgs <- unique(df$TG)
+  
+  m.exp <- m.de[tgs,]
+  
+  m.sig <- m.anova.set[tgs,]
+  m.sig[m.sig == 1] <- "*"
+  m.sig[m.sig == 0] <- ""
+  
+  v.sig.tf <- m.anova.set[tfs[r],]
+  v.sig.tf[v.sig.tf == 1] <- "*"
+  v.sig.tf[v.sig.tf == 0] <- ""
+  
+  if(dim(m.exp)[1] > 1){
+    
+    dd.col <- as.dendrogram(hclust(dist((m.exp))))
+    row.col <- order.dendrogram(dd.col)
+    
+    m.exp <- m.exp[row.col,]
+    m.sig <- m.sig[row.col,]
+    
+    tgs <- rownames(m.exp)
+    
+  }
+  
+  v.exp.tf <- m.de[tfs[r],]
+  names(v.exp.tf) <- exps
+  
+  m.exp <- rbind(m.exp, v.exp.tf)
+  m.sig <- rbind(m.sig, v.sig.tf)
+  
+  m.exp <- as.matrix(m.exp)
+  m.sig <- as.matrix(m.sig)
+  
+  rownames(m.exp) <- rownames(m.sig) <- c(tgs, tfs[r])
+  
+  max.line <- length(tgs) + 0.5 + 1
+  p.tgs <- plot_ratios(cormat=m.exp, m.value=m.sig, v.title = paste("Targets of ", tfs[r], sep =""), v.name = "logFC", v.max = max(m.exp), v.min = min(m.exp), max.line = max.line)
+  
+  l.p.tgs[[r]] <- p.tgs # plot as 10 x 30
+  
+}
+# 
+# p1 <- plot_ratios(cormat=m.test[,1:3], v.title = "", v.name = "", v.max = max(m.test), v.min = min(m.test))
+# p2 <- plot_ratios(cormat=m.test[,4:6], v.title = "", v.name = "", v.max = max(m.test), v.min = min(m.test))
+# p3 <- plot_ratios(cormat=m.test[,7:9], v.title = "", v.name = "", v.max = max(m.test), v.min = min(m.test))
+
+
+library(gridExtra)
+library(grid)
+grid.arrange(l.p.tgs[[1]], l.p.tgs[[2]], l.p.tgs[[3]], l.p.tgs[[4]], l.p.tgs[[5]], l.p.tgs[[6]], l.p.tgs[[7]], l.p.tgs[[8]], l.p.tgs[[9]], l.p.tgs[[10]], ncol = 5,  top = "log foldChange differential expression patterns of putative regulators and targets across all three experimental time series") # plot the three expression b
+
+
+
+
+message("Runnning gene expression based inference to support putative links of differential expression")
+
+# perform analysis for all putative links with differential gene expression
+
+tfs.DE <- names(v.regulators)
+tgs <- rownames(m.fc.root)
+tgs <- rownames(m.expression.root)
+
+#### GENIE3 ####
+message("running GENIE3")
+tfs.DE.root <- (intersect(tfs.DE, rownames(m.fc.root)))
+tfs.DE.root <- (intersect(tfs.DE, rownames(m.expression.root)))
+
+# v.tf_families[tfs.DE.root]
+# m.fc.root was previously
+m.rf <- compute_randomforest_based_GRN(mat.expression=m.fc.root, k="sqrt", nb.trees=1000, set.regulators = tfs.DE.root, set.genes = tgs, seed=1234, importance.measure = "impurity", n.cpus = 4)
+# saveRDS(m.rf, "m.RF_1000_032621.rds") # 032621 - work with the filtered 380 experiments dataset 
+saveRDS(m.rf, "m.RF_1000.rds")
+m.rf <- readRDS("data/m.RF_500.rds")
+
+## test comparison 
+
+df.regulatoryNetwork <- as.data.frame(as.table(m.rf), stringsAsFactors = FALSE) 
+names(df.regulatoryNetwork)[1:3] <- c("tf","target","rf")
+df.regulatoryNetwork <- subset(df.regulatoryNetwork, df.regulatoryNetwork$rf > 0)
+df.regulatoryNetwork <- subset(df.regulatoryNetwork, as.character(df.regulatoryNetwork$tf) != as.character(df.regulatoryNetwork$target))
+
+
+
+
+
+
+
+
+
+
+
+
 # setwd("/home/mbanf/Documents/Computational_Biology/Projects/Hatem/")
 
 #setwd("/shared/Labs/Rhee Lab/Everyone/Michael/Hatem-FePNetwork/")
@@ -13,160 +289,22 @@ rm(list=ls()) # clear workspace
 # biocLite(c("AnnotationDbi", "impute", "GO.db", "preprocessCore")) 
 # install.packages("WGCNA")
 
+
 message("loading general pre-curated differential expression and dna binding data")
 
-source("MERIT_DifferentialExpression.R")
-source("MERIT_DNA.R")
 
-m.de <- readRDS("m.de_1125.rds")
-m.fc <- readRDS("m.fc_1125.rds")
-v.series_sets <- readRDS("v.series_sets_1125.rds")
-v.repeats <- readRDS("v.repeats_1125.rds")
-v.treatment_buildingblocks <- readRDS("v.treatments_1125.rds")
-
-# library(WGCNA)
-# library(genefilter)
-# library(parmigene)
-
-# # two gene expression sets - root related
-# if(FALSE){
-#   
-#     mat.GE.Ath <- read.table("gene_expression/GSE69995_re-analyzed_data_matrix.txt", row.names = 1, header = TRUE, sep = "\t", quote = "")
-#     mat.GE.Ath <- as.matrix(mat.GE.Ath)
-#     map.GE.MicroArray <- read.csv("gene_expression/tpj13175-sup-0003-TableS2.csv", stringsAsFactors = FALSE)
-#     
-#     v.conditions <- paste(map.GE.MicroArray$Series.Title, map.GE.MicroArray$Sample.Title, sep = ";")
-#     colnames(mat.GE.Ath) <- v.conditions
-#     
-#     m.rootSet <- mat.GE.Ath[,which(map.GE.MicroArray$Tissue == "root")]
-#     v.gns <- rownames(m.rootSet)
-#   
-#     m.pcc <- cor(t(m.rootSet))
-#     saveRDS(m.pcc, "m.pcc_big.rds")
-#     
-#     m.mi <- parmigene::knnmi.all(m.rootSet) # capturing nonlinear expression relationships
-#     saveRDS(m.mi, "m.mi_big.rds")
-#     
-# }else{
 
 # selected by hatem (root specific stress)
 message("loading root specific annotations and datasets (gene ontology, anova results)")
 
-df.root_selection <- read.csv("expMetaRoot.txt", sep = ";", header = FALSE, stringsAsFactors = FALSE)
-v.series.root <- unique(df.root_selection$V11)
-v.series.root <- v.series.root[v.series.root != "characteristics..Original.series.ID"]
-
-v.samples.root <- unique(df.root_selection$V2)
-v.samples.root <- v.samples.root[v.samples.root != "Sample.name"]
-
-v.samples.root <- intersect(colnames(m.expression), v.samples.root)
-m.expression.root <- m.expression[,v.samples.root] # expression matrix for random forest 
-
-i.set <- which(colnames(m.fc) %in% v.series.root)
-
-v.series.root <- intersect(colnames(m.de), v.series.root)
-m.de.root <- m.de[,v.series.root]
-
-m.fc.root <- m.fc[,i.set] # select from log foldchange matrix
-
-m.cor <- cor(t(m.fc.root))
-
-v.treatment_buildingblocks.root <- v.treatment_buildingblocks[i.set]
-v.repeats.root <- v.repeats[i.set]
 
 #### Differential expression data
 #df.diffexp <- read.csv("diffexp_highConfidence.csv", stringsAsFactors = FALSE)
-df.geneontology <- read.csv("Table annotation_INITIAL.csv", stringsAsFactors = FALSE) #read.table("Table annotation_INITIAL.txt", header = TRUE, sep = "\t", quote = "")
 
-v.map <- df.geneontology$AGI
-names(v.map) <- df.geneontology$Transcript.Cluster.ID
 
 #df.diffexp["AGI"] <- v.map[as.character(df.diffexp$Cluster)]
 
 # read hatem's anova datasets
-v.anova <- read.csv("anova_tests.csv", stringsAsFactors = FALSE, header = FALSE)
-df.anova <- read.csv("anovaResults.csv", stringsAsFactors = FALSE)
-agi <- v.map[as.character(df.anova$Cluster)]
-df.anova <- df.anova[,-1]
-
-v.anova <- v.anova[,1]
-names(df.anova) <- v.anova
-
-m.anova <- as.matrix(df.anova)
-rownames(m.anova) <- agi
-
-# subset all datasets with p-value smaller 0.05
-m.anova[m.anova > 0.05] <- 10
-m.anova[m.anova <= 0.05] <- 1
-m.anova[m.anova == 10] <- 0
-
-m.anova.set <- m.anova[,c(49,50,51,87,88,89,109,110,111),drop = FALSE]
-m.anova.set <- m.anova.set[,c(1,4,7,2,5,8,3,6,9)]
-m.anova.set <- m.anova.set[which(rowSums(m.anova.set) > 0),]
-
-### raw gene expression data ### 
-df.geneExp <- read.csv("geneExpData.csv", header = TRUE, stringsAsFactors = FALSE)
-df.geneExp["AGI"] <- v.map[as.character(df.geneExp$Cluster)]
-df.geneExp <- df.geneExp[,-1]
-
-v.gnSets <- names(which(table(df.geneExp$AGI) == 1))
-df.geneExp <- subset(df.geneExp, df.geneExp$AGI %in% v.gnSets)
-v.gnSets <- df.geneExp$AGI
-
-rownames(df.geneExp) <- v.gnSets
-
-df.geneExp <- (df.geneExp[1:13] + df.geneExp[14:26] + df.geneExp[27:39])/3
-#rownames(df.geneExp) <- v.gnSets
-
-# compute the standard deviations for the fold changes
-
-df.geneExp <- df.geneExp[,c(1,2,6,10,3,7,11,4,8,12,5,9,13)]
-
-df.geneExp.set <- df.geneExp[,-1]
-df.geneExp.set <- df.geneExp.set[,c(1,4,7,10,2,5,8,11,3,6,9,12)]
-df.geneExp.set[,2:4] <- df.geneExp.set[,2:4] - df.geneExp.set[,1]
-df.geneExp.set[,6:8] <- df.geneExp.set[,6:8] - df.geneExp.set[,5]
-df.geneExp.set[,10:12] <- df.geneExp.set[,10:12] - df.geneExp.set[,9] # log fold change
-
-df.geneExp.set <- df.geneExp.set[,c(2:4,6:8,10:12)]
-
-###
-
-# 
-v.0PF <- apply(df.geneExp.set[rownames(m.anova.set),c(1,4,7)],1, mean)
-v.P0F <- apply(df.geneExp.set[rownames(m.anova.set),c(2,5,8)],1, mean)
-v.0P0F <- apply(df.geneExp.set[rownames(m.anova.set),c(3,6,9)],1, mean)
-
-# 
-# cor(v.0PF, v.P0F)
-# cor(v.0PF, v.0P0F)
-# cor(v.P0F, v.0P0F)
-# 
-# 
-# clusters <- hclust(dist(t(data.frame("-P+Fe" = v.0PF, "+P-Fe" = v.P0F, "-P-Fe" = v.0P0F))))
-# plot(clusters)
-message("plot condition similarity")
-
-library(ggplot2)
-library(ggdendro)
-
-hc <- hclust(dist(t(data.frame("0PF" = v.0PF, "P0F" = v.P0F, "0P0F" = v.0P0F))), "ave")
-ggdendrogram(hc, rotate = FALSE, size = 4) + labs(title="Dendrogram in ggplot2")
-
-dendr <- dendro_data(hc, type="rectangle")
-#your own labels are supplied in geom_text() and label=label
-ggplot() +
-geom_segment(data=segment(dendr), aes(x=x, y=y, xend=xend, yend=yend)) +
-geom_text(data=label(dendr), aes(x=x, y=y, label=c("  - Ph / + Fe", "  + Ph / - Fe", "  - Ph / - Fe"), hjust=0), size=4) +
-coord_flip() + scale_y_reverse(expand=c(0.2, 0)) +
-  theme(axis.line.y=element_blank(),
-        axis.ticks.y=element_blank(),
-        axis.text.y=element_blank(),
-        axis.title.y=element_blank(),
-        axis.title.x=element_blank(),
-        panel.background=element_rect(fill="white"),
-        panel.grid=element_blank())
-
 
 
 
@@ -188,56 +326,11 @@ coord_flip() + scale_y_reverse(expand=c(0.2, 0)) +
 
 ####
 
-# using identifications based on iTAK platform to identify regulator families involved 
-tf.families = read.table("Arabidopsis_thaliana-all.txt", header = FALSE, fill = TRUE, stringsAsFactors = FALSE)[,1:2] 
-tf.families$V1 <- gsub("\\..*", "",tf.families$V1)
-tf.families <- unique(tf.families)
-
-v.tf_families <- tf.families$V2
-names(v.tf_families) <- tf.families$V1
-
-i.set <- which(names(v.tf_families) %in% rownames(m.anova.set)) # additional TFs involved
-v.regulators <-  v.tf_families[i.set]#[!grepl("PPC:", v.tf_families[i.set])]
-
-# filter protein kinases etc.
-v.regulators <- v.regulators[!grepl("RLK", v.regulators) & !grepl("PPC", v.regulators) & !grepl("AGC", v.regulators) & !grepl("Group", v.regulators)  & !grepl("mTERF", v.regulators) & !grepl("Tify", v.regulators) & !grepl("Aur", v.regulators)  & !grepl("CAMK", v.regulators)  & !grepl("TRAF", v.regulators) & !grepl("MED7", v.regulators)]
-#v.regulators <-  v.regulators[!grepl("RLK", v.regulators)]
-
 # - replace with updated list #
 
 # load additional evidences 
 
 # conservation
-if(FALSE){
-  
-  df.dna.conservation.selection  <- read.csv("Yu2016-srep25164-s2.csv", stringsAsFactors = FALSE)
-  df.dna.conservation.selection <- df.dna.conservation.selection[,c(1,6)]
-  
-  df.dna.conservation <- data.frame(TF = character(), Target = character())
-  
-  pb <- txtProgressBar(min = 0, max = nrow(df.dna.conservation.selection), style = 3)
-  
-  for(i in 1:nrow(df.dna.conservation.selection)){
-    
-    setTxtProgressBar(pb, i)
-    
-    tfs.i <- unlist(strsplit(df.dna.conservation.selection$TF[i], ", "))
-    tg.i <- df.dna.conservation.selection$Target[i]
-    
-    for(j in 1:length(tfs.i)){
-      df.dna.conservation <- rbind(df.dna.conservation, data.frame(TF = tfs.i[j], Target = tg.i))  
-    }
-    
-  }
-  
-  close(pb)
-  
-  saveRDS(df.dna.conservation, "df.dna.conservation.rds")
-  
-}else{
-  df.dna.conservation <- readRDS("df.dna.conservation.rds") 
-}
-
 
 ####
 # df.regulatoryNetwork.selection <- subset(df.regulatoryNetwork, df.regulatoryNetwork$TF %in% rownames(m.anova.set))
@@ -254,12 +347,7 @@ if(FALSE){
 
 # subset(df.dna.DE, df.dna.DE$Target == "AT2G26290")
 
-message("Runnning gene expression based inference to support putative links of differential expression")
 
-# perform analysis for all putative links with differential gene expression
-
-tfs.DE <- names(v.regulators)
-tgs <- rownames(m.fc.root)
 #tfs.DE <- df.dna.DE$TF
 #tgs.DE <- df.dna.DE$Target
 
@@ -346,12 +434,14 @@ tgs <- rownames(m.fc.root)
 #### GENIE3 ####
 message("running GENIE3")
 tfs.DE.root <- (intersect(tfs.DE, rownames(m.fc.root)))
+tfs.DE.root <- (intersect(tfs.DE, rownames(m.expression.root)))
 
 # v.tf_families[tfs.DE.root]
-
-#m.rf <- compute_randomforest_based_GRN(mat.expression=m.fc.root, k="sqrt", nb.trees=500, set.regulators = tfs.DE.root, set.genes = tgs, seed=1234, importance.measure = "impurity", n.cpus = 10)
-# saveRDS(m.rf, "m.RF_500.rds")
-m.rf <- readRDS("m.RF_500.rds")
+# m.fc.root was previously
+m.rf <- compute_randomforest_based_GRN(mat.expression=m.fc.root, k="sqrt", nb.trees=1000, set.regulators = tfs.DE.root, set.genes = tgs, seed=1234, importance.measure = "impurity", n.cpus = 4)
+# saveRDS(m.rf, "m.RF_1000_032621.rds") # 032621 - work with the filtered 380 experiments dataset 
+saveRDS(m.rf, "m.RF_1000.rds")
+m.rf <- readRDS("data/m.RF_500.rds")
 
 ## test comparison 
 
@@ -401,54 +491,6 @@ for(j in 1:length(tfs.DE)){
 #df.regulatoryNetwork.selection_dna <- subset(df.regulatoryNetwork.selection, df.regulatoryNetwork.selection$dna_binding.dapSeq == 1)
 
 
-df.regulatoryNetwork.meta["coDiffExp_0PF"] <- 0
-df.regulatoryNetwork.meta["coDiffExp_P0F"] <- 0
-df.regulatoryNetwork.meta["coDiffExp_0P0F"] <- 0
-df.regulatoryNetwork.meta["coDiffExp"] <- 0
-
-df.regulatoryNetwork <- c()
-
-for(j in 1:length(tfs.DE)){
-  
-  df.regulatoryNetwork.j <- subset(df.regulatoryNetwork.meta, df.regulatoryNetwork.meta$tf ==  tfs.DE[j])
-  
-  i.min <- min(which(m.anova.set[tfs.DE[j], 1:3] == 1))
-  
-  if(i.min != Inf){
-    
-    tgs.de <- rownames(m.anova.set)[which(rowSums(m.anova.set[, i.min:3]) >= 1)]
-    i.set <- which(df.regulatoryNetwork.j$target %in% tgs.de)
-    df.regulatoryNetwork.j$coDiffExp_0PF[i.set] <- 1
-    
-  }
-  
-  
-  i.min <- min(which(m.anova.set[tfs.DE[j], 4:6] == 1))
-  
-  if(i.min != Inf){
-    
-    tgs.de <- rownames(m.anova.set)[which(rowSums(m.anova.set[, i.min:3]) >= 1)]
-    i.set <- which(df.regulatoryNetwork.j$target %in% tgs.de)
-    df.regulatoryNetwork.j$coDiffExp_P0F[i.set] <- 1
-    
-  }
-  
-  
-  i.min <- min(which(m.anova.set[tfs.DE[j], 7:9] == 1))
-  
-  if(i.min != Inf){
-    
-    tgs.de <- rownames(m.anova.set)[which(rowSums(m.anova.set[, i.min:3]) >= 1)]
-    i.set <- which(df.regulatoryNetwork.j$target %in% tgs.de)
-    df.regulatoryNetwork.j$coDiffExp_0P0F[i.set] <- 1
-    
-  }
-  
-  df.regulatoryNetwork.j$coDiffExp <- pmax(pmax(df.regulatoryNetwork.j$coDiffExp_0PF, df.regulatoryNetwork.j$coDiffExp_P0F), df.regulatoryNetwork.j$coDiffExp_0P0F)
-  df.regulatoryNetwork <- rbind(df.regulatoryNetwork, df.regulatoryNetwork.j)
-  
-}
-
 # construct unsupervised integration 
 
 # p.eta <- ecdf(df.regulatoryNetwork$eta)
@@ -457,7 +499,7 @@ p.rf <- ecdf(df.regulatoryNetwork$rf)
 # df.regulatoryNetwork["p.eta"] <- p.eta(df.regulatoryNetwork$eta)
 df.regulatoryNetwork["p.rf"] <- p.rf(df.regulatoryNetwork$rf)
 
-df.regulatoryNetwork["rank"] <- df.regulatoryNetwork$p.rf + df.regulatoryNetwork$coDiffExp + df.regulatoryNetwork$dna_binding.dapSeq
+df.regulatoryNetwork["rank"] <- df.regulatoryNetwork$coDiffExp + df.regulatoryNetwork$dna_binding.dapSeq # + df.regulatoryNetwork$p.rf
 df.regulatoryNetwork <- df.regulatoryNetwork[order(-df.regulatoryNetwork$rank),]
 
 #df.dna.set <- subset(df.dna, df.dna$TF %in% rownames(m.anova.set) | df.dna$Target %in% rownames(m.anova.set)) # unique
@@ -480,12 +522,12 @@ df.regulatoryNetwork.selection["fam"] <- v.regulators[as.character(df.regulatory
 df.regulatoryNetwork.selection <- df.regulatoryNetwork.selection[,c(1,13,2:12)]
 df.regulatoryNetwork.selection <- df.regulatoryNetwork.selection[,-4]
 
-write.csv(df.regulatoryNetwork.selection, "df.regulatoryNetwork.selection.csv", row.names = FALSE)
+# write.csv(df.regulatoryNetwork.selection, "df.regulatoryNetwork.selection.csv", row.names = FALSE)
 
 message("...finished")
 
 
-df.regulatoryNetwork.selection <- read.csv("df.regulatoryNetwork.selection.csv")
+df.regulatoryNetwork.selection <- read.csv("data/df.regulatoryNetwork.selection.csv")
 #table(v.tf_families[unique(df.regulatoryNetwork.selection$tf)])
 
 ###
@@ -514,7 +556,6 @@ df.regulatoryNetwork.selection <- read.csv("df.regulatoryNetwork.selection.csv")
 message("plot detailed regulation heatmaps - for diff exp targets")
 
 
-exps <- c("-P / +Fe (3h)", "-P / +Fe (6h)", "-P / +Fe (9h)",  "+P / -Fe (3h)", "+P / -Fe (6h)", "+P / -Fe (9h)", "-P / -Fe (3h)", "-P / -Fe (6h)", "-P / -Fe (9h)")
 
 # m.test <- as.matrix(df.geneExp.set[tfs.DE,c(1,4,7,2,5,8,3,6,9), drop = FALSE])
 # colnames(m.test) <- exps
@@ -533,6 +574,9 @@ exps <- c("-P / +Fe (3h)", "-P / +Fe (6h)", "-P / +Fe (9h)",  "+P / -Fe (3h)", "
 # m.sig[m.sig == 0] <- ""
 # 
 # p.tfs <- plot_ratios(cormat=m.test, m.value=m.sig, v.title = "Transcription Factors", v.name = "logFC", v.max = max(m.test), v.min = min(m.test))
+
+
+# TODO: target regulation by individual TF plot 
 
 tfs.DE.selection <-  unique(df.regulatoryNetwork.selection$tf)
 
@@ -599,6 +643,20 @@ for(r in 1:length(tfs.DE.selection)){
 library(gridExtra)
 library(grid)
 grid.arrange(l.p.tgs[[1]], l.p.tgs[[2]], l.p.tgs[[3]], l.p.tgs[[4]], l.p.tgs[[5]], l.p.tgs[[6]], l.p.tgs[[7]], l.p.tgs[[8]], l.p.tgs[[9]], l.p.tgs[[10]], ncol = 5,  top = "log foldChange differential expression patterns of putative regulators and targets across all three experimental time series") # plot the three expression b
+
+
+message("plot the entire gene expression map")
+
+
+library("ggplot2")
+library("ggdendro")
+library("reshape2")
+
+df <- df.geneExp.set[gns.DE,c(1,4,7,2,5,8,3,6,9)]
+df <- na.omit(df)
+m.test <- as.matrix(df, drop = FALSE)
+colnames(m.test) <- exps
+heatmap((m.test), Colv=F, scale='none')
 
 
 

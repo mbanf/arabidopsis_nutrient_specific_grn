@@ -1,4 +1,24 @@
 
+# triangle vertex shape
+mytriangle <- function(coords, v=NULL, params) {
+  vertex.color <- params("vertex", "color")
+  if (length(vertex.color) != 1 && !is.null(v)) {
+    vertex.color <- vertex.color[v]
+  }
+  vertex.size <- 1/200 * params("vertex", "size")
+  if (length(vertex.size) != 1 && !is.null(v)) {
+    vertex.size <- vertex.size[v]
+  }
+  
+  symbols(x=coords[,1], y=coords[,2], bg=vertex.color,
+          stars=cbind(vertex.size, vertex.size, vertex.size),
+          add=TRUE, inches=FALSE)
+}
+# clips as a circle
+add_shape("triangle", clip=shapes("circle")$clip,
+          plot=mytriangle)
+
+
 specificity = c("-P+Fe", "+P-Fe", "-P-Fe", 
                 "-P+Fe, +P-Fe", "-P+Fe, -P-Fe",
                 "+P-Fe, -P-Fe", "-P+Fe, +P-Fe, -P-Fe")
@@ -9,15 +29,13 @@ names(code_specificity) <- specificity
 cols_specificity = c( "cyan", "tomato", "steelblue", "black", "pink",  "purple", "sienna") 
 names(cols_specificity) <- seq(1, length(specificity))
 
-
-m.spec <- matrix(0, nrow=length(v.regulators), ncol = length(gns.DE))
-rownames(m.spec) <- names(v.regulators)
-colnames(m.spec) <- gns.DE
-
 m.grn <- matrix(0, nrow=length(v.regulators), ncol = length(gns.DE))
 rownames(m.grn) <- names(v.regulators)
 colnames(m.grn) <- gns.DE
 
+m.spec <- matrix(0, nrow=length(v.regulators), ncol = length(gns.DE))
+rownames(m.spec) <- names(v.regulators)
+colnames(m.spec) <- gns.DE
 
 for(i in 1:nrow(df.code)){
   tf = df.code$TF[i]
@@ -50,18 +68,33 @@ for(i in 1:nrow(df.code)){
   }
 }
 
-for(i in 1:nrow(df.dna.de)){
-  tf <- as.character(df.dna.de$TF[i])
-  tg <- as.character(df.dna.de$TG[i])
+
+# create grn from DNA binding data - set threshold at 0.5
+# load DNA binding dataset (created with tfbs project)
+df.dna <- readRDS("data/m.motifNet")
+df.dna <- melt(df.dna)
+names(df.dna) <- c("TF", "TG", "val")
+df.dna <- subset(df.dna, df.dna$val > 0)
+nrow(df.dna)
+
+
+for(i in 1:nrow(df.dna)){
+  tf <- as.character(df.dna$TF[i])
+  tg <- as.character(df.dna$TG[i])
   if(tf != tg){
-    m.grn[tf, tg] <- m.grn[tf, tg] + df.dna.de$val[i]
+    val <- df.dna$val[i]
+    if(val > 0.5){  # minimum binding confidence
+      m.grn[tf, tg] <- m.grn[tf, tg] + val
+    }else{
+      m.grn[tf, tg] <- 0 # delete even co-diff links! (if the motif is known)
+    }
   }
 }
 
 for(i in 1:nrow(df.rf.grn)){
   tf <- as.character(df.rf.grn$TF[i])
   tg <- as.character(df.rf.grn$TG[i])
-  if(tf != tg){
+  if(tf != tg){ # evidence for co-diff without binding motif in tf
     m.grn[tf, tg] <- m.grn[tf, tg] + as.numeric(df.rf.grn$val[i])
   }
 }
@@ -69,28 +102,32 @@ for(i in 1:nrow(df.rf.grn)){
 df.grn <- melt(m.grn)
 names(df.grn) <- c("TF", "TG", "val")
 
-# df.sign <- melt(m.sign)
-# names(df.sign) <- c("TF", "TG", "mode")
-
 df.spec <- melt(m.spec)
 names(df.spec) <- c("TF", "TG", "spec")
 
-# df.grn["mode"] <- df.sign["mode"]
 df.grn["spec"] <- df.spec["spec"]
 
 df.grn <- df.grn[order(-df.grn$val),]
 
 df.grn <- subset(df.grn, df.grn$spec != 0)
-df.grn <- subset(df.grn, df.grn$val > 1.8) # 80 % binding evidence or 80 % by additional root expression 
+df.grn <- subset(df.grn, df.grn$val > 1.5)
 
 tfs.final = unique(as.character(df.grn$TF))
 
-idx <- sort(unique(df.grn$spec))
-specificity = specificity[idx]
-cols_specificity = cols_specificity[idx]
+table(df.grn$spec)
+nrow(df.grn)
+
+# idx <- sort(unique(df.grn$spec))
+# specificity = specificity[idx]
+# cols_specificity = cols_specificity[idx]
 
 
 #####  
+
+v.regs <- c("IAA5", "ERF37", "ERF36", "bHLH93","MYB49", "ERF6","NAC100","bHLH23","bHLH39","PLATZ11","MYB76","DAZ3") 
+names(v.regs) <- c("AT1G15580", "AT1G77200", "AT3G16280", "AT5G65640", "AT5G54230", "AT4G17490","AT5G61430","AT4G28790","AT3G56980","AT4G17900","AT5G07700","AT4G35700")
+
+
 
 library(igraph)
 g=graph.edgelist(as.matrix(df.grn[,1:2]))
@@ -102,37 +139,296 @@ hubs <- hubs / max(hubs)
 # specifitiy of regulation - distribution per hub node! 
 # highlight RSK1 in size
 
-V(g)$size <-  ifelse(names(V(g)) == rsk1, 2.5, ifelse(names(V(g)) %in% df.grn$TF, hubs[names(V(g))] * 2 + 1, 2))
+V(g)$size <-  ifelse(names(V(g)) == rsk1, 4, ifelse(names(V(g)) %in% df.grn$TF, hubs[names(V(g))] * 2 + 1, 2))
 E(g)$weight <- df.grn$val / max(df.grn$val)
 
 # up and down regultion --- boring :) 
 # E(g)$color <- ifelse(df.grn$mode == 1, "red", ifelse(df.grn$mode == -1, "green", "gray"))
-E(g)$color <- ifelse(df.grn$mode == 1, "red", ifelse(df.grn$mode == -1, "green", "gray"))
+# E(g)$color <- ifelse(df.grn$mode == 1, "red", ifelse(df.grn$mode == -1, "green", "gray"))
 
 E(g)$color <- cols_specificity[df.grn$spec]
 
-V(g)$color <- ifelse(names(V(g)) == rsk1, adjustcolor("blue", alpha.f = .9) , ifelse(names(V(g)) %in% tfs.final, adjustcolor("orange", alpha.f = .6), adjustcolor("gray", alpha.f = .6)))
-V(g)$type <- ifelse(names(V(g)) %in% tfs.final, 0, 1)
 
-vertex.label <- ifelse(names(V(g)) %in% tfs.final, paste(names(V(g)), "(", v.regulators[names(V(g))], ")", sep="") , "")  # TODO: this might not work?
+
+V(g)$color <- cols_specificity[gn_spec[names(V(g))]]
+# V(g)$color <- ifelse(names(V(g)) == rsk1, adjustcolor("blue", alpha.f = .7) , ifelse(names(V(g)) %in% tfs.final, adjustcolor("orange", alpha.f = .6), adjustcolor("gray", alpha.f = .6)))
+
+
+
+V(g)$shape <- ifelse(names(V(g)) == rsk1, "triangle" , ifelse(names(V(g)) %in% tfs.final, "circle", "square"))
+
+
+#vertex.label <- ifelse(names(V(g)) %in% tfs.final, paste(names(V(g)), "(", v.regulators[names(V(g))], ")", sep="") , "")  # TODO: this might not work?
+#idx <- which(names(V(g)) == rsk1)
+#vertex.label[idx] <- "RSK1" #paste(rsk1, "(RSK1)")
+
+vertex.label <- ifelse(names(V(g)) %in% tfs.final, v.regs[names(V(g))] , "")  # TODO: this might not work?
 idx <- which(names(V(g)) == rsk1)
-vertex.label[idx] <- paste(rsk1, "(RSK1)")
+vertex.label[idx] <- "RSK1"
 
 # set.seed(92235) 
 # set.seed(992235) 
 
-set.seed(99999) 
+set.seed(9999) 
 plot(g, edge.arrow.size=.1, 
      edge.curved=seq(-0.5, 0.5, length = ecount(g)),
-     vertex.label.dist=0.25,
-     vertex.label.cex=0.65,
+     vertex.label.dist=0.4,
+     vertex.label.cex=0.7,
      vertex.label.color = "black",
      vertex.label=vertex.label,edge.width=E(g)$weight)#, main = paste(v.tissues[s], " / ", names(l.grn_treatment[[s]])[i], " / ", v.domains[d], sep =""))
 
 
 # plot(NULL ,xaxt='n',yaxt='n',bty='n',ylab='',xlab='', xlim=0:1, ylim=0:1)
-legend("bottomleft", legend=specificity , col = cols_specificity , bty = "n", pch="-" , pt.cex = 2, cex = 0.8, horiz = FALSE, inset = c(0.2, 0.2))
 
+# specificity
+legend("bottomleft", legend=specificity , col = cols_specificity , bty = "n", pch="-" , pt.cex = 2, cex = 0.8, horiz = FALSE, inset = c(0.0, 0.2))
+
+# vertex type
+legend("bottomleft", legend=c("Transcrition factor", "RSK1", "Other gene") , col = "black" , bty = "n", pch=c(16, 17, 15), pt.cex = 1, cex = 0.8, horiz = FALSE, inset = c(0.0, 0.1))
+
+# 13 * 20
+
+
+
+
+#### subplot -P+Fe
+
+# main players!
+ERF036 = "AT3G16280"
+ERF037 = "AT1G77200"
+MYB49 = "AT5G54230"
+RSK1 = "AT2G26290"
+
+
+df <- subset(df.grn, df.grn$spec %in% c(1,4))
+g=graph.edgelist(as.matrix(df[,1:2]))
+
+
+# Node size - accorind to number of targets or strength!1
+hubs = table(df$TF)
+hubs <- hubs / max(hubs)
+# specifitiy of regulation - distribution per hub node! 
+# highlight RSK1 in size
+
+V(g)$size <-  ifelse(names(V(g)) == rsk1, 7, ifelse(names(V(g)) %in% df$TF, hubs[names(V(g))] * 4 + 1, 2))
+E(g)$weight <- df$val / max(df$val)
+E(g)$lty <- 3
+
+
+idx <- which(df$TG == rsk1)
+E(g)$lty[idx] <- 1
+
+# up and down regultion --- boring :) 
+# E(g)$color <- ifelse(df.grn$mode == 1, "red", ifelse(df.grn$mode == -1, "green", "gray"))
+# E(g)$color <- ifelse(df.grn$mode == 1, "red", ifelse(df.grn$mode == -1, "green", "gray"))
+
+E(g)$color <- "gray" #  adjustcolor("gray", alpha.f = .9)
+E(g)$color[idx] <- adjustcolor("brown", alpha.f = .8)
+
+
+# V(g)$color <- cols_specificity[gn_spec[names(V(g))]]
+V(g)$color <- ifelse(names(V(g)) == rsk1, adjustcolor("blue", alpha.f = .7) , ifelse(names(V(g)) %in% tfs.final, adjustcolor("orange", alpha.f = .6), adjustcolor("darkgreen", alpha.f = .6)))
+V(g)$shape <- ifelse(names(V(g)) == rsk1, "triangle" , ifelse(names(V(g)) %in% tfs.final, "circle", "square"))
+
+# 
+# V(g)$color 
+
+vertex.label <- ifelse(names(V(g)) %in% tfs.final, v.regs[names(V(g))] , "")  # TODO: this might not work?
+idx <- which(names(V(g)) == rsk1)
+vertex.label[idx] <- "RSK1"
+
+V(g)$label.cex <- 0.7
+V(g)[ERF036]$label.cex <- 1.4
+V(g)[ERF037]$label.cex <- 1.4
+V(g)[MYB49]$label.cex<- 1.4
+V(g)[RSK1]$label.cex <- 1.4
+
+
+# V(g)[ERF036]$color <- "darkred"
+# V(g)[ERF037]$color <- "darkred"
+# V(g)[MYB49]$color <- "darkred"
+
+
+# set.seed(92235) 
+# set.seed(992235) 
+
+set.seed(7)
+plot(g, edge.arrow.size=.1,  # 10 x 10 
+     edge.curved=seq(-0.5, 0.5, length = ecount(g)),
+     vertex.label.dist=0.95,
+     vertex.label.color = "black",
+     vertex.label=vertex.label,edge.width=E(g)$weight)#, main = paste(v.tissues[s], " / ", names(l.grn_treatment[[s]])[i], " / ", v.domains[d], sep =""))
+
+
+
+
+
+### specific gsea 
+gn <- as.character(unique(df$TG))
+
+
+
+## TODO: biological process by spec ### 
+## TODO: 2 heatmaps, TFs and Targets separate or on top ## 
+
+gns <- names(V(g))
+specs <- gn_spec[gns]
+
+c_group <- sort(unique(specs))
+
+for(s in 1:length(code_specificity)){
+  
+  gn = names(which(specs == s))
+  go_gsea(gn, th = 0.05, title = paste("Biological process of", length(gn), "genes specific to", names(code_specificity)[s]), ontology = "BP")
+  go_gsea(gn, th = 0.05, title = paste("Molecular function of", length(gn), "genes specific to", names(code_specificity)[s]),  ontology = "MF")
+  
+}
+
+
+
+specs_grn <- sort(unique(df.grn$spec))
+
+for(s in 1:length(specs_grn)){
+  
+  specs_grn[s]
+  
+  
+}
+
+df.grn
+
+# 1 - 1:3
+# 2 - 4:6
+# 3 - 7:9
+# 4 - c(1,2,3,4,5,6)
+idx = 1:3; s = 1
+
+idx = 4:6; s = 2
+
+idx = 7:9; s = 3
+
+idx = c(1,2,3,4,5,6); s = 4
+
+
+idx = 1:9; s = 1
+
+tfs <-  unique(df.grn$TF)
+
+l.p.tgs <- vector(mode = "list", length = length(specs_grn))
+
+for(s in 1:length(specs_grn)){
+  
+  df.grn.s = subset(df.grn, df.grn$spec == specs_grn[s])
+  
+  tfs <- as.character(unique(df.grn.s$TF))
+  tgs <- as.character(unique(df.grn.s$TG))
+  
+  tgs = intersect(tgs, names(which(specs == s)))
+  
+  
+  m.exp <- m.de[tgs,idx]
+  
+  m.sig <- m.anova.set[tgs,idx]
+  
+  
+  
+  ### if true
+  
+  m.exp.sig = m.exp * m.sig
+  
+  
+  
+  ### 
+  
+  m.sig[m.sig == 1] <- "*"
+  m.sig[m.sig == 0] <- ""
+  
+  m.sig.tf <- m.anova.set[tfs,idx]
+  m.sig.tf[m.sig.tf == 1] <- "*"
+  m.sig.tf[m.sig.tf == 0] <- ""
+  
+  if(dim(m.exp)[1] > 1){
+    
+    dd.col <- as.dendrogram(hclust(dist((m.exp))))
+    row.col <- order.dendrogram(dd.col)
+    
+    m.exp <- m.exp[row.col,]
+    m.sig <- m.sig[row.col,]
+    
+    tgs <- rownames(m.exp)
+    
+  }
+  
+  # plot targets (wo TFs) clustered with dendrogram
+  if(TRUE){ # special plot 
+    
+    dd.col <- as.dendrogram(hclust(dist((m.sig))))
+    row.col <- order.dendrogram(dd.col)
+    
+    m.exp <- m.exp[row.col,]
+    m.sig <- m.sig[row.col,]
+    
+    tgs <- rownames(m.exp)
+    
+    plot_clean_targets(m.exp, dd.col)
+  }
+  
+  
+  m.exp.tf <- m.de[tfs,idx]
+  names(m.exp.tf) <- exps
+  
+  m.exp <- rbind(m.exp, m.exp.tf)
+  m.sig <- rbind(m.sig, m.sig.tf)
+  
+  m.exp <- as.matrix(m.exp)
+  m.sig <- as.matrix(m.sig)
+  
+  rownames(m.exp) <- rownames(m.sig) <- c(tgs, tfs)
+  
+  regs = paste(tfs, " (", v.regulators[tfs], ")", sep="")
+  
+  title = paste(paste("Regulatory module with with", length(tgs), "genes specifically regulated under", names(code_specificity)[s]),
+                paste("involved regulators:", paste(regs, collapse=", ")), sep="\n")
+  
+  p.tgs <- plot_regulons(cormat=m.exp, m.value = m.sig, 
+                          tfs=tfs, tgs=tgs,
+                          title = title, v.name = "logFC",  v.max = max(m.exp), v.min = min(m.exp))
+
+  # regulon - clean clustering heatmap - 
+  
+  
+  
+  
+  l.p.tgs[[r]] <- p.tgs # plot as 10 x 30
+  
+}
+# 
+# p1 <- plot_ratios(cormat=m.test[,1:3], v.title = "", v.name = "", v.max = max(m.test), v.min = min(m.test))
+# p2 <- plot_ratios(cormat=m.test[,4:6], v.title = "", v.name = "", v.max = max(m.test), v.min = min(m.test))
+# p3 <- plot_ratios(cormat=m.test[,7:9], v.title = "", v.name = "", v.max = max(m.test), v.min = min(m.test))
+
+
+library(gridExtra)
+library(grid)
+grid.arrange(l.p.tgs[[1]], l.p.tgs[[2]], l.p.tgs[[3]], l.p.tgs[[4]], l.p.tgs[[5]], l.p.tgs[[6]], l.p.tgs[[7]], l.p.tgs[[8]], l.p.tgs[[9]], l.p.tgs[[10]], ncol = 5,  top = "log foldChange differential expression patterns of putative regulators and targets across all three experimental time series") # plot the three expression b
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+##################
 
 
 # devtools::install_github("USCCANA/netplot")

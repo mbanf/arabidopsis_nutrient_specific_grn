@@ -84,11 +84,8 @@ plot_ratios <- function(cormat=cormat, m.value = m.value, v.title = "", v.name =
   melted_cormat <- melt(cormat)
   melted_cormat <- na.omit(melted_cormat)
   
-  
   melted_value <- melt(m.value)
   melted_value <- na.omit(melted_value)
-  
-  
   
   # Create a ggheatmap
   ggheatmap <- ggplot(melted_cormat, aes(Var2, Var1, fill = value)) +
@@ -136,5 +133,254 @@ plot_ratios <- function(cormat=cormat, m.value = m.value, v.title = "", v.name =
   
   return(ggheatmap)
 }
+
+
+
+
+# https://jcoliver.github.io/learn-r/008-ggplot-dendrograms-and-heatmaps.html
+
+plot_regulons_tgs <- function(m.exp=m.exp, m.sig = m.sig, 
+                              tfs=tfs, tgs=tgs,
+                              title = "", v.name = "", 
+                              v.max = 1.0, v.min = 0){
+  
+  # assumption is that the matrix has already been ordered by dendrogram
+  
+  library(ggplot2)
+  library(ggdendro)
+  library(reshape2)
+  library(grid)
+  
+  dendro.plot <- ggdendrogram(data = dd.col, rotate = TRUE)
+  dendro.plot <- dendro.plot + theme(axis.text.y = element_text(size = 6), axis.text.x = element_blank())
+  
+  n.specs = dim(m.exp)[2]
+  
+  # Melt the correlation matrix
+  melted_cormat <- melt((m.exp))
+  melted_cormat <- na.omit(melted_cormat)
+  
+  melted_value <- melt((m.sig))
+  melted_value <- na.omit(melted_value)
+  
+  # Create a ggheatmap
+  ggheatmap <- ggplot(melted_cormat, aes(Var2, Var1, fill = value)) +
+    geom_tile(color = "black") +
+    scale_fill_gradient2(low = "green", high = "red", mid = "white", 
+                         midpoint = 0, limit = c(v.min,v.max), name=v.name) +
+    
+    #               scale_x_discrete(breaks = rownames(cormat), labels=v.x_axis.ticks) + 
+    #               scale_y_discrete(breaks = colnames(cormat), labels=v.y_axis.ticks) + 
+    
+    theme_minimal() + # minimal theme
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+                                     size = 6, hjust = 1,
+                                     colour="black")) +
+    theme(axis.text.y = element_text(angle = 0, vjust = 0,
+                                     size = 6, hjust = 0,
+                                     colour="black")) +
+    
+    theme(legend.key.size = unit(0.5, 'cm'), #change legend key size
+          legend.key.height = unit(0.5, 'cm'), #change legend key height
+          legend.key.width = unit(0.5, 'cm'), #change legend key width
+          legend.title = element_text(size=6), #change legend title font size
+          legend.text = element_text(size=6)) +  #change legend text font size
+  
+    # ggtitle(title) +
+    # theme(plot.title = element_text(lineheight=1.0,  size = 11)) + 
+    coord_fixed()
+  
+  
+  ggheatmap <- (ggheatmap + 
+                  
+                  # commented out for non significance representation
+                  geom_text(aes(Var2, Var1, label = melted_value$value), color = "black", size = 6, vjust = 0.8) + 
+                  
+                  theme(
+                    axis.title.x = element_blank(),
+                    axis.title.y = element_blank(),
+                    axis.text.y = element_blank(), # remove identifies
+                    panel.grid.major = element_blank(),
+                    panel.border = element_blank(),
+                    panel.background = element_blank(),
+                    axis.ticks = element_blank(),
+                    legend.position = "left",
+                    # legend.justification = c(-1, 1),
+                    #legend.position = c(0.6, 0.7),
+                    #legend.direction = "horizontal")+
+                    #guides(fill = guide_colorbar(barwidth = 7, barheight = 1,title.position = "top", title.hjust = 0.5))
+                  ) 
+                  # geom_segment(data=my.lines, aes(x,y,xend=xend, yend=yend), size=1, inherit.aes=F)
+                
+  )
+  
+  pdf("test.pdf", height = 15, width = 8, paper = "letter")
+  
+  grid.newpage()
+  print(ggheatmap, vp = viewport(x = 0.32, y = 0.5, width = 0.2, height = 1.0))
+  print(dendro.plot, vp = viewport(x = 0.5, y = 0.512, width = 0.2, height = 1.055))
+  
+  dev.off()
+  
+  # 8 15
+  
+  #export figure
+  ggsave(p,filename="test.png",height=8,width=15,units="in",dpi=200)
+  
+  return(ggheatmap)
+}
+
+
+
+
+
+
+plot_regulons <- function(m.exp=m.exp, m.sig = m.sig, 
+                          tfs=tfs, tgs=tgs,
+                          title = "", v.name = "", 
+                          v.max = 1.0, v.min = 0){
+  
+  n.specs = dim(m.exp)[2]
+  
+  # Melt the correlation matrix
+  melted_cormat <- melt(t(m.exp[c(tfs, tgs),]))
+  melted_cormat <- na.omit(melted_cormat)
+  
+  melted_value <- melt(t(m.sig[c(tfs, tgs),]))
+  melted_value <- na.omit(melted_value)
+  
+  color.palette  <- colorRampPalette(c("yellow", "orange", "red"))(n=600)
+  
+  # Create a ggheatmap
+  ggheatmap <- ggplot(melted_cormat, aes(Var2, Var1, fill = value)) +
+    geom_tile(color = "black") +
+    scale_fill_gradient2(low = "green", high = "red", mid = "white", 
+                         midpoint = 0, limit = c(v.min,v.max), name=v.name) +
+    
+    #               scale_x_discrete(breaks = rownames(cormat), labels=v.x_axis.ticks) + 
+    #               scale_y_discrete(breaks = colnames(cormat), labels=v.y_axis.ticks) + 
+    
+    theme_minimal()+ # minimal theme
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+                                     size = 9, hjust = 1,
+                                     colour="black")) +
+    theme(axis.text.y = element_text(angle = 0, vjust = 0, 
+                                     size = 9, hjust = 0,
+                                     colour="black")) +
+    ggtitle(title) +
+    theme(plot.title = element_text(lineheight=1.0,  size = 11)) + 
+    coord_fixed()
+  
+  
+  # my.lines<-data.frame(x=c(3.5,6.5,0.5), y=c(0.5,0.5, max.line - 1), xend=c(3.5,6.5,9.5), yend=c(max.line,max.line, max.line - 1))
+  max.line <- length(tfs) + 0.5
+  yend = n.specs + 0.5
+  my.lines<-data.frame(x=c(max.line), y=c(0.5), xend=c(max.line), yend=c(yend))
+  
+  
+  
+  ggheatmap <- (ggheatmap + 
+                  
+                  # commented out for non significance representation
+                  geom_text(aes(Var2, Var1, label = melted_value$value), color = "black", size = 6, vjust = 1) + 
+                  
+                  theme(
+                    axis.title.x = element_blank(),
+                    axis.title.y = element_blank(),
+                    panel.grid.major = element_blank(),
+                    panel.border = element_blank(),
+                    panel.background = element_blank(),
+                    axis.ticks = element_blank()
+                    #legend.justification = c(1, 0),
+                    #legend.position = c(0.6, 0.7),
+                    #legend.direction = "horizontal")+
+                    #guides(fill = guide_colorbar(barwidth = 7, barheight = 1,title.position = "top", title.hjust = 0.5))
+                  ) + 
+                  geom_segment(data=my.lines, aes(x,y,xend=xend, yend=yend), size=1, inherit.aes=F)
+                
+  )
+  
+  
+  #export figure
+  # ggsave(p,filename="measles-mod3.png",height=5.5,width=8.8,units="in",dpi=200)
+  
+  return(ggheatmap)
+}
+
+
+
+
+
+plot_clean_targets <- function(m.exp, dd.col,  c_group = 6){
+  
+  
+  dend1 <- dd.col
+  
+  library(curl)       # read file from google drive
+  library(gplots)     # heatmap.2
+  library(dendextend) # make and color dendrogram
+  library(colorspace) # diverge_hcl / rainbow_hcl / heat_hcl color palettes
+  
+  
+  dev.off()
+  
+  # number of clusters
+  # hc <- hclust(m.exp)
+  # ct <- cutree(hc, k = c_group)
+  # 
+  # dend1 <- as.dendrogram(hc)
+  dend1 <- color_branches(dend1, k = c_group, col = rainbow_hcl) # add color to the lines
+  dend1 <- color_labels(dend1, k = c_group, col = rainbow_hcl)   # add color to the labels
+  
+  # reorder the dendrogram, must incl. `agglo.FUN = mean`
+  # rMeans <- rowMeans(m.exp, na.rm = T)
+  # dend1 <- reorder(dend1, rowMeans(m.exp, na.rm = T), agglo.FUN = mean)
+  
+  # get the color of the leaves (labels) for `heatmap.2`
+  col_labels <- get_leaves_branches_col(dend1)
+  col_labels <- col_labels[order(order.dendrogram(dend1))]
+  
+  # if plot the dendrogram alone:
+  # the size of the labels:
+  dend1 <- set(dend1, "labels_cex", 0.5)
+  par(mar = c(1,1,1,1))
+  plot_horiz.dendrogram(dend1, side = F) # use side = T to horiz mirror if needed
+  
+  
+  color.palette  <- colorRampPalette(c("green", "white", "red"))(n=50)
+  ###
+  
+  ## plot the heatmap with the dendrogram above ##
+  par(cex.main=0.5)                   # adjust font size of titles
+  heatmap.2(m.exp, main = '',
+            # reorderfun=function(d, w) reorder(d, w, agglo.FUN = mean),
+            # order by branch mean so the deepest color is at the top
+            dendrogram = "row",        # no dendrogram for columns
+            Rowv = dend1,              # * use self-made dendrogram
+            Colv = "NA",               # make sure the columns follow data's order
+            col = color.palette,         # color pattern of the heatmap
+            
+            trace="none",              # hide trace
+            density.info="none",       # hide histogram
+            key = T,
+            keysize = 1.5,
+            key.title = NA,
+            margins = c(5,3),         # margin on top(bottom) and left(right) side.
+            cexRow=0.4, cexCol = 0.8,      # size of row / column labels
+            xlab = "",
+            srtCol=90, adjCol = c(0.5,1), # adjust the direction of row label to be horizontal
+            # margin for the color key
+            # ("bottom.margin", "left.margin", "top.margin", "left.margin" )
+            key.par=list(mar=c(10,1,2,1)),
+            RowSideColors = col_labels, # to add nice colored strips        
+            colRow = col_labels,         # add color to label
+            labRow=FALSE
+  )
+ 
+  
+}
+
+
+
 
 
