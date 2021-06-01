@@ -1,3 +1,11 @@
+## main script  
+
+library(reshape2)
+library(ggplot2)
+
+source("nutrition_differential_expression.R")
+source("transcriptional_regulators.R")
+
 
 # triangle vertex shape
 mytriangle <- function(coords, v=NULL, params) {
@@ -37,7 +45,61 @@ m.spec <- matrix(0, nrow=length(v.regulators), ncol = length(gns.DE))
 rownames(m.spec) <- names(v.regulators)
 colnames(m.spec) <- gns.DE
 
+
+
+### creating grn
+
+tgs <- intersect(rownames(m.de), gns.DE)
+tfs <- intersect(names(v.regulators), gns.DE)
+
+df.grn <- c()
+
+for(j in 1:length(tfs)){
+  
+  tf <- tfs[j]
+  df.grn.j <- data.frame(TF=rep(tf,length(tgs)), TG=tgs)
+  df.grn.j["0PF"] <- 0
+  df.grn.j["P0F"] <- 0
+  df.grn.j["0P0F"] <- 0
+  
+  i.min <- min(which(m.anova.set[tf, 1:3] == 1))
+  
+  if(i.min != Inf){
+    
+    tgs.de <- intersect(tgs, rownames(m.anova.set)[which(rowSums(m.anova.set[, i.min:3]) >= 1)])
+    idx = which(df.grn.j$TG %in% tgs.de)
+    df.grn.j$`0PF`[idx] <- 1
+    
+  }
+  
+  i.min <- min(which(m.anova.set[tf, 4:6] == 1))
+  
+  if(i.min != Inf){
+    
+    tgs.de <- intersect(tgs, rownames(m.anova.set)[which(rowSums(m.anova.set[, (3 + i.min):6]) >= 1)])
+    idx = which(df.grn.j$TG %in% tgs.de)
+    df.grn.j$P0F[idx] <- 1
+    
+    
+  }
+  
+  i.min <- min(which(m.anova.set[tf, 7:9] == 1))
+  if(i.min != Inf){
+    tgs.de <- intersect(tgs, rownames(m.anova.set)[which(rowSums(m.anova.set[, (6 + i.min):9]) >= 1)])
+    idx = which(df.grn.j$TG %in% tgs.de)
+    df.grn.j$`0P0F`[idx] <- 1
+  }
+  if(length(df.grn.j) > 0){
+    df.grn <- rbind(df.grn, df.grn.j)
+  }
+}
+
+df.code <- df.grn
+df.code <- df.code[which(rowSums(df.code[,3:5]) > 0),]
+
+
 for(i in 1:nrow(df.code)){
+  
   tf = df.code$TF[i]
   tg = df.code$TG[i]
   if(tf != tg){
@@ -110,7 +172,7 @@ df.grn["spec"] <- df.spec["spec"]
 df.grn <- df.grn[order(-df.grn$val),]
 
 df.grn <- subset(df.grn, df.grn$spec != 0)
-df.grn <- subset(df.grn, df.grn$val > 1.5)
+df.grn <- subset(df.grn, df.grn$val > 1.5) # dna binding 
 
 tfs.final = unique(as.character(df.grn$TF))
 
@@ -141,19 +203,9 @@ hubs <- hubs / max(hubs)
 
 V(g)$size <-  ifelse(names(V(g)) == rsk1, 4, ifelse(names(V(g)) %in% df.grn$TF, hubs[names(V(g))] * 2 + 1, 2))
 E(g)$weight <- df.grn$val / max(df.grn$val)
-
-# up and down regultion --- boring :) 
-# E(g)$color <- ifelse(df.grn$mode == 1, "red", ifelse(df.grn$mode == -1, "green", "gray"))
-# E(g)$color <- ifelse(df.grn$mode == 1, "red", ifelse(df.grn$mode == -1, "green", "gray"))
-
 E(g)$color <- cols_specificity[df.grn$spec]
-
-
-
 V(g)$color <- cols_specificity[gn_spec[names(V(g))]]
 # V(g)$color <- ifelse(names(V(g)) == rsk1, adjustcolor("blue", alpha.f = .7) , ifelse(names(V(g)) %in% tfs.final, adjustcolor("orange", alpha.f = .6), adjustcolor("gray", alpha.f = .6)))
-
-
 
 V(g)$shape <- ifelse(names(V(g)) == rsk1, "triangle" , ifelse(names(V(g)) %in% tfs.final, "circle", "square"))
 
@@ -166,9 +218,9 @@ vertex.label <- ifelse(names(V(g)) %in% tfs.final, v.regs[names(V(g))] , "")  # 
 idx <- which(names(V(g)) == rsk1)
 vertex.label[idx] <- "RSK1"
 
-# set.seed(92235) 
-# set.seed(992235) 
 
+
+# large supplement version 
 set.seed(9999) 
 plot(g, edge.arrow.size=.1, 
      edge.curved=seq(-0.5, 0.5, length = ecount(g)),
@@ -177,7 +229,6 @@ plot(g, edge.arrow.size=.1,
      vertex.label.color = "black",
      vertex.label=vertex.label,edge.width=E(g)$weight)#, main = paste(v.tissues[s], " / ", names(l.grn_treatment[[s]])[i], " / ", v.domains[d], sep =""))
 
-
 # plot(NULL ,xaxt='n',yaxt='n',bty='n',ylab='',xlab='', xlim=0:1, ylim=0:1)
 
 # specificity
@@ -185,9 +236,10 @@ legend("bottomleft", legend=specificity , col = cols_specificity , bty = "n", pc
 
 # vertex type
 legend("bottomleft", legend=c("Transcrition factor", "RSK1", "Other gene") , col = "black" , bty = "n", pch=c(16, 17, 15), pt.cex = 1, cex = 0.8, horiz = FALSE, inset = c(0.0, 0.1))
-
 # 13 * 20
 
+
+# 
 
 
 
@@ -243,15 +295,6 @@ V(g)[ERF037]$label.cex <- 1.4
 V(g)[MYB49]$label.cex<- 1.4
 V(g)[RSK1]$label.cex <- 1.4
 
-
-# V(g)[ERF036]$color <- "darkred"
-# V(g)[ERF037]$color <- "darkred"
-# V(g)[MYB49]$color <- "darkred"
-
-
-# set.seed(92235) 
-# set.seed(992235) 
-
 set.seed(7)
 plot(g, edge.arrow.size=.1,  # 10 x 10 
      edge.curved=seq(-0.5, 0.5, length = ecount(g)),
@@ -265,11 +308,6 @@ plot(g, edge.arrow.size=.1,  # 10 x 10
 
 ### specific gsea 
 gn <- as.character(unique(df$TG))
-
-
-
-## TODO: biological process by spec ### 
-## TODO: 2 heatmaps, TFs and Targets separate or on top ## 
 
 gns <- names(V(g))
 specs <- gn_spec[gns]
@@ -412,6 +450,37 @@ library(gridExtra)
 library(grid)
 grid.arrange(l.p.tgs[[1]], l.p.tgs[[2]], l.p.tgs[[3]], l.p.tgs[[4]], l.p.tgs[[5]], l.p.tgs[[6]], l.p.tgs[[7]], l.p.tgs[[8]], l.p.tgs[[9]], l.p.tgs[[10]], ncol = 5,  top = "log foldChange differential expression patterns of putative regulators and targets across all three experimental time series") # plot the three expression b
 
+
+
+
+
+##### gsea of gene clusters ### 
+
+source("gsea.R")
+
+for(j in 1:c_group){
+  v.gns <- names(which(ct == j))
+  go_gsea(v.gns, th = 0.1, ontology = "BP")
+  go_gsea(v.gns, th = 0.1, ontology = "MF")
+}
+
+
+## all genes gsea 
+go_gsea(gns.DE, th = 0.1, ontology = "BP")
+go_gsea(gns.DE, th = 0.1, ontology = "MF")
+
+gns <- names(V(g))
+specs <- gn_spec[gns]
+
+c_group <- sort(unique(specs))
+
+for(s in 1:length(code_specificity)){
+  
+  gn = names(which(specs == s))
+  go_gsea(gn, th = 0.05, title = paste("Biological process of", length(gn), "genes specific to", names(code_specificity)[s]), ontology = "BP")
+  go_gsea(gn, th = 0.05, title = paste("Molecular function of", length(gn), "genes specific to", names(code_specificity)[s]),  ontology = "MF")
+  
+}
 
 
 
