@@ -2,29 +2,12 @@
 
 library(reshape2)
 library(ggplot2)
+library(ranger)
 
 source("nutrition_differential_expression.R")
 source("transcriptional_regulators.R")
+source("root_differential_expression.R")
 
-
-# triangle vertex shape
-mytriangle <- function(coords, v=NULL, params) {
-  vertex.color <- params("vertex", "color")
-  if (length(vertex.color) != 1 && !is.null(v)) {
-    vertex.color <- vertex.color[v]
-  }
-  vertex.size <- 1/200 * params("vertex", "size")
-  if (length(vertex.size) != 1 && !is.null(v)) {
-    vertex.size <- vertex.size[v]
-  }
-  
-  symbols(x=coords[,1], y=coords[,2], bg=vertex.color,
-          stars=cbind(vertex.size, vertex.size, vertex.size),
-          add=TRUE, inches=FALSE)
-}
-# clips as a circle
-add_shape("triangle", clip=shapes("circle")$clip,
-          plot=mytriangle)
 
 
 specificity = c("-P+Fe", "+P-Fe", "-P-Fe", 
@@ -51,6 +34,46 @@ colnames(m.spec) <- gns.DE
 
 tgs <- intersect(rownames(m.de), gns.DE)
 tfs <- intersect(names(v.regulators), gns.DE)
+
+
+### gene specificities
+gn_spec <- rep(0, length(tgs))
+names(gn_spec) <- tgs
+
+for(i in 1:length(tgs)){
+  
+  gn = tgs[i]
+  npf <- min(1,sum(m.anova.set[gn, 1:3]))
+  pnf <- min(1,sum(m.anova.set[gn, 4:6]))
+  npnf <- min(1,sum(m.anova.set[gn, 7:9])) 
+  
+  
+  if(npf == 1 & pnf == 0 & npnf == 0){
+    gn_spec[i] <- 1}
+  
+  if(npf == 0 & pnf == 1 & npnf == 0){
+    gn_spec[i] <- 2}
+  
+  if(npf == 0 & pnf == 0 & npnf == 1){
+    gn_spec[i] <- 3}
+  
+  if(npf == 1 & pnf == 1 & npnf == 0){
+    gn_spec[i] <- 4}
+  
+  if(npf == 1 & pnf == 0 & npnf == 1){
+    gn_spec[i] <- 5}
+  
+  if(npf == 0 & pnf == 1 & npnf == 1){
+    gn_spec[i] <- 6}
+  
+  if(npf == 1 & pnf == 1 & npnf == 1){
+    gn_spec[i] <- 7}
+  
+}
+
+table(gn_spec)
+
+
 
 df.grn <- c()
 
@@ -96,6 +119,9 @@ for(j in 1:length(tfs)){
 
 df.code <- df.grn
 df.code <- df.code[which(rowSums(df.code[,3:5]) > 0),]
+nrow(df.code)
+
+
 
 
 for(i in 1:nrow(df.code)){
@@ -189,9 +215,31 @@ nrow(df.grn)
 v.regs <- c("IAA5", "ERF37", "ERF36", "bHLH93","MYB49", "ERF6","NAC100","bHLH23","bHLH39","PLATZ11","MYB76","DAZ3") 
 names(v.regs) <- c("AT1G15580", "AT1G77200", "AT3G16280", "AT5G65640", "AT5G54230", "AT4G17490","AT5G61430","AT4G28790","AT3G56980","AT4G17900","AT5G07700","AT4G35700")
 
+rsk1 = "AT2G26290"
 
 
 library(igraph)
+
+# triangle vertex shape
+mytriangle <- function(coords, v=NULL, params) {
+  vertex.color <- params("vertex", "color")
+  if (length(vertex.color) != 1 && !is.null(v)) {
+    vertex.color <- vertex.color[v]
+  }
+  vertex.size <- 1/200 * params("vertex", "size")
+  if (length(vertex.size) != 1 && !is.null(v)) {
+    vertex.size <- vertex.size[v]
+  }
+  
+  symbols(x=coords[,1], y=coords[,2], bg=vertex.color,
+          stars=cbind(vertex.size, vertex.size, vertex.size),
+          add=TRUE, inches=FALSE)
+}
+# clips as a circle
+add_shape("triangle", clip=shapes("circle")$clip,
+          plot=mytriangle)
+
+
 g=graph.edgelist(as.matrix(df.grn[,1:2]))
 
 
@@ -239,7 +287,31 @@ legend("bottomleft", legend=c("Transcrition factor", "RSK1", "Other gene") , col
 # 13 * 20
 
 
+# more compacted version
 # 
+# Other graph layouts: add_layout_, component_wise, layout_as_bipartite, layout_as_star, 
+# layout_as_tree, layout_in_circle, layout_nicely, layout_on_grid, layout_on_sphere, layout_randomly, layout_with_dh, layout_with_fr, 
+# layout_with_gem, layout_with_graphopt, layout_with_kk, layout_with_lgl, 
+# layout_with_mds, layout_with_sugiyama, merge_coords, norm_coords, normalize
+# 
+
+
+set.seed(9999) 
+coords <- layout_(g, as_star())
+plot(g, 
+     layout = coords,
+     edge.arrow.size=.1, 
+     edge.curved=seq(-0.5, 0.5, length = ecount(g)),
+     vertex.label.dist=0.4,
+     vertex.label.cex=0.7,
+     vertex.label.color = "black",
+     vertex.label=vertex.label,edge.width=E(g)$weight)#, main = paste(v.tissues[s], " / ", names(l.grn_treatment[[s]])[i], " / ", v.domains[d], sep =""))
+
+legend("bottomleft", legend=specificity , col = cols_specificity , bty = "n", pch="-" , pt.cex = 2, cex = 0.8, horiz = FALSE, inset = c(-0.13, 0.2))
+
+# vertex type
+legend("bottomleft", legend=c("Transcrition factor", "RSK1", "Other gene") , col = "black" , bty = "n", pch=c(16, 17, 15), pt.cex = 1, cex = 0.8, horiz = FALSE, inset = c(-0.13, 0.1))
+# 13 * 20
 
 
 
@@ -301,6 +373,19 @@ plot(g, edge.arrow.size=.1,  # 10 x 10
      vertex.label.dist=0.95,
      vertex.label.color = "black",
      vertex.label=vertex.label,edge.width=E(g)$weight)#, main = paste(v.tissues[s], " / ", names(l.grn_treatment[[s]])[i], " / ", v.domains[d], sep =""))
+
+
+
+
+
+##### specific expression and p-values .. 
+
+ERF036 = "AT3G16280"
+ERF037 = "AT1G77200"
+MYB49 = "AT5G54230"
+RSK1 = "AT2G26290"
+
+
 
 
 

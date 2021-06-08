@@ -69,29 +69,31 @@ v.0P0F <- apply(df.geneExp.set[gns.DE,c(3,6,9)],1, mean)
 
 
 
-message("plot condition similarity")
-
-library(ggplot2)
-library(ggdendro)
-
-hc <- hclust(dist(t(data.frame("0PF" = v.0PF, "P0F" = v.P0F, "0P0F" = v.0P0F))), "ave")
-ggdendrogram(hc, rotate = FALSE, size = 4) + labs(title="Dendrogram in ggplot2")
-
-dendr <- dendro_data(hc, type="rectangle")
-#your own labels are supplied in geom_text() and label=label
-ggplot() +
-  geom_segment(data=segment(dendr), aes(x=x, y=y, xend=xend, yend=yend)) +
-  geom_text(data=label(dendr), aes(x=x, y=y, label=c("  - Ph / + Fe", "  + Ph / - Fe", "  - Ph / - Fe"), hjust=0), size=4) +
-  coord_flip() + scale_y_reverse(expand=c(0.2, 0)) +
-  theme(axis.line.y=element_blank(),
-        axis.ticks.y=element_blank(),
-        axis.text.y=element_blank(),
-        axis.title.y=element_blank(),
-        axis.title.x=element_blank(),
-        panel.background=element_rect(fill="white"),
-        panel.grid=element_blank())
-
-
+plot_condition_sim <- function(){
+  
+  message("plot condition similarity")
+  
+  library(ggplot2)
+  library(ggdendro)
+  
+  hc <- hclust(dist(t(data.frame("0PF" = v.0PF, "P0F" = v.P0F, "0P0F" = v.0P0F))), "ave")
+  ggdendrogram(hc, rotate = FALSE, size = 4) + labs(title="Dendrogram in ggplot2")
+  
+  dendr <- dendro_data(hc, type="rectangle")
+  #your own labels are supplied in geom_text() and label=label
+  ggplot() +
+    geom_segment(data=segment(dendr), aes(x=x, y=y, xend=xend, yend=yend)) +
+    geom_text(data=label(dendr), aes(x=x, y=y, label=c("  - Ph / + Fe", "  + Ph / - Fe", "  - Ph / - Fe"), hjust=0), size=4) +
+    coord_flip() + scale_y_reverse(expand=c(0.2, 0)) +
+    theme(axis.line.y=element_blank(),
+          axis.ticks.y=element_blank(),
+          axis.text.y=element_blank(),
+          axis.title.y=element_blank(),
+          axis.title.x=element_blank(),
+          panel.background=element_rect(fill="white"),
+          panel.grid=element_blank())
+  
+}
 
 
 
@@ -119,59 +121,56 @@ library(gplots)     # heatmap.2
 library(dendextend) # make and color dendrogram
 library(colorspace) # diverge_hcl / rainbow_hcl / heat_hcl color palettes
 
-
-dev.off()
-
-c_group <- 8 # number of clusters
-hc <- hclust(dist(F_m2))
-ct <- cutree(hc, k = c_group)
-
-dend1 <- as.dendrogram(hc)
-dend1 <- color_branches(dend1, k = c_group, col = rainbow_hcl) # add color to the lines
-dend1 <- color_labels(dend1, k = c_group, col = rainbow_hcl)   # add color to the labels
-
-# reorder the dendrogram, must incl. `agglo.FUN = mean`
-rMeans <- rowMeans(F_m2, na.rm = T)
-dend1 <- reorder(dend1, rowMeans(F_m2, na.rm = T), agglo.FUN = mean)
-
-# get the color of the leaves (labels) for `heatmap.2`
-col_labels <- get_leaves_branches_col(dend1)
-col_labels <- col_labels[order(order.dendrogram(dend1))]
-
-# if plot the dendrogram alone:
-# the size of the labels:
-dend1 <- set(dend1, "labels_cex", 0.5)
-par(mar = c(1,1,1,14))
-plot_horiz.dendrogram(dend1, side = F) # use side = T to horiz mirror if needed
-
-###
-
-## plot the heatmap with the dendrogram above ##
-par(cex.main=0.5)                   # adjust font size of titles
-heatmap.2(F_m2, main = '',
-          # reorderfun=function(d, w) reorder(d, w, agglo.FUN = mean),
-          # order by branch mean so the deepest color is at the top
-          dendrogram = "row",        # no dendrogram for columns
-          Rowv = dend1,              # * use self-made dendrogram
-          Colv = "NA",               # make sure the columns follow data's order
-          col = diverge_hcl,         # color pattern of the heatmap
-          
-          trace="none",              # hide trace
-          density.info="none",       # hide histogram
-          
-          margins = c(5,18),         # margin on top(bottom) and left(right) side.
-          cexRow=0.4, cexCol = 0.8,      # size of row / column labels
-          xlab = "",
-          srtCol=90, adjCol = c(0.5,1), # adjust the direction of row label to be horizontal
-          # margin for the color key
-          # ("bottom.margin", "left.margin", "top.margin", "left.margin" )
-          key.par=list(mar=c(10,1,2,1)),
-          RowSideColors = col_labels, # to add nice colored strips        
-          colRow = col_labels         # add color to label
-)
-
-
-
-
+plot_dend <- function(){
+  dev.off()
+  
+  c_group <- 8 # number of clusters
+  hc <- hclust(dist(F_m2))
+  ct <- cutree(hc, k = c_group)
+  
+  dend1 <- as.dendrogram(hc)
+  dend1 <- color_branches(dend1, k = c_group, col = rainbow_hcl) # add color to the lines
+  dend1 <- color_labels(dend1, k = c_group, col = rainbow_hcl)   # add color to the labels
+  
+  # reorder the dendrogram, must incl. `agglo.FUN = mean`
+  rMeans <- rowMeans(F_m2, na.rm = T)
+  dend1 <- reorder(dend1, rowMeans(F_m2, na.rm = T), agglo.FUN = mean)
+  
+  # get the color of the leaves (labels) for `heatmap.2`
+  col_labels <- get_leaves_branches_col(dend1)
+  col_labels <- col_labels[order(order.dendrogram(dend1))]
+  
+  # if plot the dendrogram alone:
+  # the size of the labels:
+  dend1 <- set(dend1, "labels_cex", 0.5)
+  par(mar = c(1,1,1,14))
+  plot_horiz.dendrogram(dend1, side = F) # use side = T to horiz mirror if needed
+  
+  ###
+  
+  ## plot the heatmap with the dendrogram above ##
+  par(cex.main=0.5)                   # adjust font size of titles
+  heatmap.2(F_m2, main = '',
+            # reorderfun=function(d, w) reorder(d, w, agglo.FUN = mean),
+            # order by branch mean so the deepest color is at the top
+            dendrogram = "row",        # no dendrogram for columns
+            Rowv = dend1,              # * use self-made dendrogram
+            Colv = "NA",               # make sure the columns follow data's order
+            col = diverge_hcl,         # color pattern of the heatmap
+            
+            trace="none",              # hide trace
+            density.info="none",       # hide histogram
+            
+            margins = c(5,18),         # margin on top(bottom) and left(right) side.
+            cexRow=0.4, cexCol = 0.8,      # size of row / column labels
+            xlab = "",
+            srtCol=90, adjCol = c(0.5,1), # adjust the direction of row label to be horizontal
+            # margin for the color key
+            # ("bottom.margin", "left.margin", "top.margin", "left.margin" )
+            key.par=list(mar=c(10,1,2,1)),
+            RowSideColors = col_labels, # to add nice colored strips        
+            colRow = col_labels         # add color to label
+  )
+}
 
 
