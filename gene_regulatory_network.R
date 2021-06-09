@@ -386,6 +386,45 @@ MYB49 = "AT5G54230"
 RSK1 = "AT2G26290"
 
 
+### raw gene expression data ### 
+df.geneExp <- read.csv("data/geneExpData.csv", header = TRUE, stringsAsFactors = FALSE)
+df.geneExp["AGI"] <- v.map[as.character(df.geneExp$Cluster)]
+df.geneExp <- df.geneExp[,-1]
+
+v.gnSets <- names(which(table(df.geneExp$AGI) == 1))
+df.geneExp <- subset(df.geneExp, df.geneExp$AGI %in% v.gnSets)
+v.gnSets <- df.geneExp$AGI
+
+rownames(df.geneExp) <- v.gnSets
+df.geneExp <- df.geneExp[c(ERF036, ERF037, MYB49, RSK1),]
+
+df3 = df.geneExp[,c(3, 16, 29)] - df.geneExp[,c(2,15,28)]
+df6 = df.geneExp[,c(7, 20, 33)] - df.geneExp[,c(6,19,32)]
+df9 = df.geneExp[,c(11, 24, 37)] - df.geneExp[,c(10,23,36)]
+
+gn = ERF036
+
+
+y = as.numeric(c(df3[gn,], df6[gn,], df9[gn,]))
+x = c(rep(1,3), rep(2,3), rep(3,3))
+
+labels = c("3h", "6h", "9h")
+
+boxplot(y~x, ylab = "logFC", xlab = "", xaxt="n", las=2,  frame = FALSE)
+
+text(x=c(1,2,3),  par("usr")[3], labels = labels, srt = 0, pos = 1, xpd = TRUE)
+
+m.anova.set[c(ERF036, ERF037, MYB49, RSK1),1:3]
+text(x=2,y=-0.3,"*",pos=3,cex=1.5) # ARSK1 
+
+
+
+
+
+
+
+
+
 
 
 
