@@ -135,10 +135,6 @@ plot_ratios <- function(cormat=cormat, m.value = m.value, v.title = "", v.name =
 }
 
 
-
-
-# https://jcoliver.github.io/learn-r/008-ggplot-dendrograms-and-heatmaps.html
-
 plot_regulons_tgs <- function(m.exp=m.exp, m.sig = m.sig, 
                               tfs=tfs, tgs=tgs,
                               title = "", v.name = "", 
@@ -231,10 +227,6 @@ plot_regulons_tgs <- function(m.exp=m.exp, m.sig = m.sig,
 }
 
 
-
-
-
-
 plot_regulons <- function(m.exp=m.exp, m.sig = m.sig, 
                           tfs=tfs, tgs=tgs,
                           title = "", v.name = "", 
@@ -308,9 +300,6 @@ plot_regulons <- function(m.exp=m.exp, m.sig = m.sig,
 }
 
 
-
-
-
 plot_clean_targets <- function(m.exp, dd.col,  c_group = 6){
   
   
@@ -379,8 +368,4 @@ plot_clean_targets <- function(m.exp, dd.col,  c_group = 6){
  
   
 }
-
-
-
-
 

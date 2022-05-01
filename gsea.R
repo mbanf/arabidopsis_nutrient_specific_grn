@@ -20,7 +20,8 @@ go_function <- function(v.gns, ontology = "BP"){
 # gn
 # gns.DE
 
-go_gsea <- function(v.gns, gn.pop = NULL, th = 0.05, title = "", bg.mode = "all"){
+go_gsea <- function(v.gns, gn.pop = NULL, th = 0.05, title = "", bg.mode = "all",
+                    mode = "enrichment"){
   
   #### TODO: 2 variants - population is complete, population is grn
   
@@ -82,9 +83,9 @@ go_gsea <- function(v.gns, gn.pop = NULL, th = 0.05, title = "", bg.mode = "all"
     hitInPop <- n.genomewide #sum(tb.rate_limiting_domains$Freq)
     failInPop <- n.genes - hitInPop #(nrow(df.global.domains) - hitInPop)
     
-    if(FALSE){ # enrichment
+    if(mode == "enrichment"){ # enrichment
       p.val <- phyper(hitInSample-1, hitInPop, failInPop, sampleSize, lower.tail= FALSE)
-    }else{
+    }else if(mode == "depletion"){
       p.val <- phyper(hitInSample-1, hitInPop, failInPop, sampleSize, lower.tail= TRUE)
     }
     
@@ -150,24 +151,24 @@ go_gsea <- function(v.gns, gn.pop = NULL, th = 0.05, title = "", bg.mode = "all"
   
 
   
-  library(ggplot2)
-  p1 <- (ggplot(df.BP_enrichment, aes(x=df.BP_enrichment$BP, y=(df.BP_enrichment$foldchange))) +
-           geom_bar(colour="black", fill="steelblue", stat="identity") +
-           coord_flip() +
-           #coord_trans(y="sqrt") +
-           guides(fill=FALSE) +
-           xlab("") +
-           geom_text(aes(label=vec.significance), vjust=0.6, colour = "black", face = "bold", size = 9) +
-           ylab("Fold Change") +
-           #ylab("# of Regulated Genes (Shared Genes Removed)") +
-           theme(axis.text=element_text(size=9, colour = "black"), axis.title=element_text(size=9)) + 
-           ggtitle(title) +
-           theme(plot.title = element_text(lineheight=1.0, face="bold", size = 9)) +
-           theme_minimal()
-         
-  ) 
-  
-  p1  
+  # library(ggplot2)
+  # p1 <- (ggplot(df.BP_enrichment, aes(x=df.BP_enrichment$BP, y=(df.BP_enrichment$foldchange))) +
+  #          geom_bar(colour="black", fill="steelblue", stat="identity") +
+  #          coord_flip() +
+  #          #coord_trans(y="sqrt") +
+  #          guides(fill=FALSE) +
+  #          xlab("") +
+  #          geom_text(aes(label=vec.significance), vjust=0.6, colour = "black", face = "bold", size = 9) +
+  #          ylab("Fold Change") +
+  #          #ylab("# of Regulated Genes (Shared Genes Removed)") +
+  #          theme(axis.text=element_text(size=9, colour = "black"), axis.title=element_text(size=9)) + 
+  #          ggtitle(title) +
+  #          theme(plot.title = element_text(lineheight=1.0, face="bold", size = 9)) +
+  #          theme_minimal()
+  #        
+  # ) 
+  # 
+  # p1  
   
 }
 

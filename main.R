@@ -8,8 +8,6 @@ library(ggplot2)
 
 source("nutrition_differential_expression.R")
 source("transcriptional_regulators.R")
-source("gsea.R")
-
 
 
 
@@ -28,7 +26,6 @@ go_gsea(gns.DE, th = 0.1, ontology = "MF")
 
 gns <- names(V(g))
 specs <- gn_spec[gns]
-
 c_group <- sort(unique(specs))
 
 for(s in 1:length(code_specificity)){

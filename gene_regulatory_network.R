@@ -1,4 +1,4 @@
-## main script  
+## main script - build and visualize the network
 
 library(reshape2)
 library(ggplot2)
@@ -7,8 +7,6 @@ library(ranger)
 source("nutrition_differential_expression.R")
 source("transcriptional_regulators.R")
 source("root_differential_expression.R")
-
-
 
 specificity = c("-P+Fe", "+P-Fe", "-P-Fe", 
                 "-P+Fe, +P-Fe", "-P+Fe, -P-Fe",
@@ -119,7 +117,7 @@ for(j in 1:length(tfs)){
 
 df.code <- df.grn
 df.code <- df.code[which(rowSums(df.code[,3:5]) > 0),]
-nrow(df.code)
+message("# interactions co-diff expressions: ", nrow(df.code))
 
 
 
@@ -159,12 +157,12 @@ for(i in 1:nrow(df.code)){
 
 # create grn from DNA binding data - set threshold at 0.5
 # load DNA binding dataset (created with tfbs project)
-df.dna <- readRDS("data/m.motifNet")
+df.dna <- readRDS("data/m.motifNet.rds")
 df.dna <- melt(df.dna)
 names(df.dna) <- c("TF", "TG", "val")
 df.dna <- subset(df.dna, df.dna$val > 0)
 nrow(df.dna)
-
+message("# interactions dna binding: ", nrow(df.dna))
 
 for(i in 1:nrow(df.dna)){
   tf <- as.character(df.dna$TF[i])
@@ -204,7 +202,7 @@ tfs.final = unique(as.character(df.grn$TF))
 
 table(df.grn$spec)
 nrow(df.grn)
-
+message("# interactions final: ", nrow(df.grn))
 # idx <- sort(unique(df.grn$spec))
 # specificity = specificity[idx]
 # cols_specificity = cols_specificity[idx]
@@ -417,7 +415,7 @@ text(x=c(1,2,3),  par("usr")[3], labels = labels, srt = 0, pos = 1, xpd = TRUE)
 m.anova.set[c(ERF036, ERF037, MYB49, RSK1),1:3]
 text(x=2,y=-0.3,"*",pos=3,cex=1.5) # ARSK1 
 
-
+# TODO: add significance to plots, make loop 
 
 
 
@@ -431,7 +429,11 @@ text(x=2,y=-0.3,"*",pos=3,cex=1.5) # ARSK1
 
 
 ### specific gsea 
+source("gsea.R")
+df <- subset(df.grn, df.grn$spec %in% c(1,4)) # subset specificitys 
 gn <- as.character(unique(df$TG))
+go_gsea(gn, gn.pop = NULL, th = 0.05, mode = "enrichment") #0PFE vs genome
+
 
 gns <- names(V(g))
 specs <- gn_spec[gns]
@@ -449,20 +451,25 @@ for(s in 1:length(code_specificity)){
 
 
 specs_grn <- sort(unique(df.grn$spec))
-
-for(s in 1:length(specs_grn)){
-  
-  specs_grn[s]
-  
-  
-}
-
-df.grn
+# 
+# for(s in 1:length(specs_grn)){
+#   
+#   specs_grn[s]
+#   
+#   
+# }
+# 
+# df.grn
 
 # 1 - 1:3
 # 2 - 4:6
 # 3 - 7:9
 # 4 - c(1,2,3,4,5,6)
+
+ 
+# all and reduced representation
+specs_grn <- unique(df.grn$spec)
+
 idx = 1:3; s = 1
 
 idx = 4:6; s = 2
@@ -474,6 +481,9 @@ idx = c(1,2,3,4,5,6); s = 4
 
 idx = 1:9; s = 1
 
+
+
+
 tfs <-  unique(df.grn$TF)
 
 l.p.tgs <- vector(mode = "list", length = length(specs_grn))
@@ -484,24 +494,15 @@ for(s in 1:length(specs_grn)){
   
   tfs <- as.character(unique(df.grn.s$TF))
   tgs <- as.character(unique(df.grn.s$TG))
-  
   tgs = intersect(tgs, names(which(specs == s)))
   
-  
   m.exp <- m.de[tgs,idx]
-  
   m.sig <- m.anova.set[tgs,idx]
-  
-  
-  
+
   ### if true
-  
   m.exp.sig = m.exp * m.sig
   
-  
-  
   ### 
-  
   m.sig[m.sig == 1] <- "*"
   m.sig[m.sig == 0] <- ""
   
@@ -522,7 +523,7 @@ for(s in 1:length(specs_grn)){
   }
   
   # plot targets (wo TFs) clustered with dendrogram
-  if(TRUE){ # special plot 
+  if(FALSE){ # special plot 
     
     dd.col <- as.dendrogram(hclust(dist((m.sig))))
     row.col <- order.dendrogram(dd.col)
@@ -552,18 +553,15 @@ for(s in 1:length(specs_grn)){
   title = paste(paste("Regulatory module with with", length(tgs), "genes specifically regulated under", names(code_specificity)[s]),
                 paste("involved regulators:", paste(regs, collapse=", ")), sep="\n")
   
-  p.tgs <- plot_regulons(cormat=m.exp, m.value = m.sig, 
+  p.tgs <- plot_regulons(m.exp, m.sig, 
                           tfs=tfs, tgs=tgs,
                           title = title, v.name = "logFC",  v.max = max(m.exp), v.min = min(m.exp))
 
-  # regulon - clean clustering heatmap - 
-  
-  
-  
-  
   l.p.tgs[[r]] <- p.tgs # plot as 10 x 30
   
 }
+
+
 # 
 # p1 <- plot_ratios(cormat=m.test[,1:3], v.title = "", v.name = "", v.max = max(m.test), v.min = min(m.test))
 # p2 <- plot_ratios(cormat=m.test[,4:6], v.title = "", v.name = "", v.max = max(m.test), v.min = min(m.test))

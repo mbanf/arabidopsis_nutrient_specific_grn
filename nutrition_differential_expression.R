@@ -34,7 +34,7 @@ m.anova.set <- m.anova.set[gns.DE, ]
 
 names(exps) <- colnames(m.anova.set)
 
-saveRDS(gns.DE, "gns.DE.rds")
+saveRDS(gns.DE, "tmp/gns.DE.rds") # needed for a faster TFBS estimation
 
 ### raw gene expression data ### 
 df.geneExp <- read.csv("data/geneExpData.csv", header = TRUE, stringsAsFactors = FALSE)
