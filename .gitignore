@@ -1,6 +1,10 @@
 # data and tmp 
 data/
 tmp/
+manuscript/
+raw/
+results/
+fundus/
 
 # History files
 .Rhistory
