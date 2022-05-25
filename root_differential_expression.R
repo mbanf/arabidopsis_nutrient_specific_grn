@@ -1,16 +1,17 @@
 # source("MERIT_DifferentialExpression.R")
 # source("MERIT_DNA.R")
 
-m.de.rf <- readRDS("data/m.de_0502.rds")
-m.fc.rf <- readRDS("data/m.fc_0502.rds")
-v.series_sets <- readRDS("data/v.series_sets_0502.rds")
-v.repeats <- readRDS("data/v.repeats_0502.rds")
-v.treatment_buildingblocks <- readRDS("data/v.treatments_0502.rds")
+# differential expression data created by https://github.com/mbanf/differential-gene-expression
+m.de.rf <- readRDS(paste(folder_data, "m.de_0502.rds", sep = "/"))
+m.fc.rf <- readRDS(paste(folder_data, "m.fc_0502.rds", sep = "/"))
+v.series_sets <- readRDS(paste(folder_data, "v.series_sets_0502.rds", sep = "/"))
+v.repeats <- readRDS(paste(folder_data, "v.repeats_0502.rds", sep = "/"))
+v.treatment_buildingblocks <- readRDS(paste(folder_data, "v.treatments_0502.rds", sep = "/"))
 
 # raw expression data actually not neede for random forest regression #
 # m.expression <- as.matrix(read.table("data/GSE69995_re-analyzed_data_matrix.txt", row.names = 1, header = TRUE, sep = "\t", quote = ""))
 
-df.root_selection <- read.csv("data/expMetaRoot.txt", sep = ";", header = FALSE, stringsAsFactors = FALSE)
+df.root_selection <- read.csv(paste(folder_data, "expMetaRoot.txt", sep = "/"), sep = ";", header = FALSE, stringsAsFactors = FALSE)
 v.series.root <- unique(df.root_selection$V11)
 v.series.root <- v.series.root[v.series.root != "characteristics..Original.series.ID"]
 
