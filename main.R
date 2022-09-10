@@ -271,14 +271,14 @@ V(g)$shape <- ifelse(names(V(g)) == rsk1, "triangle" , ifelse(names(V(g)) %in% t
 #idx <- which(names(V(g)) == rsk1)
 #vertex.label[idx] <- "RSK1" #paste(rsk1, "(RSK1)")
 
-vertex.label <- ifelse(names(V(g)) %in% tfs.final, v.regs[names(V(g))] , "")  # TODO: this might not work?
+vertex.label <- ifelse(names(V(g)) %in% tfs.final, v.regs[names(V(g))] , "")
 idx <- which(names(V(g)) == rsk1)
-vertex.label[idx] <- "RSK1"
+vertex.label[idx] <- "ARSK1"
 
 
 
 # large supplement version 
-set.seed(9999) 
+set.seed(9999)  
 plot(g, edge.arrow.size=.1, 
      edge.curved=seq(-0.5, 0.5, length = ecount(g)),
      vertex.label.dist=0.4,
@@ -292,7 +292,7 @@ plot(g, edge.arrow.size=.1,
 legend("bottomleft", legend=specificity , col = cols_specificity , bty = "n", pch="-" , pt.cex = 2, cex = 0.8, horiz = FALSE, inset = c(0.0, 0.2))
 
 # vertex type
-legend("bottomleft", legend=c("Transcrition factor", "RSK1", "Other gene") , col = "black" , bty = "n", pch=c(16, 17, 15), pt.cex = 1, cex = 0.8, horiz = FALSE, inset = c(0.0, 0.1))
+legend("bottomleft", legend=c("Transcrition factor", "ARSK1", "Other gene") , col = "black" , bty = "n", pch=c(16, 17, 15), pt.cex = 1, cex = 0.8, horiz = FALSE, inset = c(0.0, 0.1))
 # 13 * 20
 
 
@@ -305,22 +305,28 @@ legend("bottomleft", legend=c("Transcrition factor", "RSK1", "Other gene") , col
 # 
 
 
-# set.seed(9999) 
-# coords <- layout_(g, as_star())
-# plot(g, 
-#      layout = coords,
-#      edge.arrow.size=.1, 
-#      edge.curved=seq(-0.5, 0.5, length = ecount(g)),
-#      vertex.label.dist=0.4,
-#      vertex.label.cex=0.7,
-#      vertex.label.color = "black",
-#      vertex.label=vertex.label,edge.width=E(g)$weight)#, main = paste(v.tissues[s], " / ", names(l.grn_treatment[[s]])[i], " / ", v.domains[d], sep =""))
-# 
-# legend("bottomleft", legend=specificity , col = cols_specificity , bty = "n", pch="-" , pt.cex = 2, cex = 0.8, horiz = FALSE, inset = c(-0.13, 0.2))
-# 
-# # vertex type
-# legend("bottomleft", legend=c("Transcrition factor", "RSK1", "Other gene") , col = "black" , bty = "n", pch=c(16, 17, 15), pt.cex = 1, cex = 0.8, horiz = FALSE, inset = c(-0.13, 0.1))
-# # 13 * 20
+set.seed(9999)
+coords <- layout_(g, with_dh())
+
+#vertex.label <- ifelse(names(V(g)) %in% tfs.final, names(V(g)) , "") 
+vertex.label <- ifelse(names(V(g)) %in% tfs.final, paste(v.regs[names(V(g))], "(", names(V(g)), ")", sep ="") , "")  # TODO: this might not work?
+# idx <- which(names(V(g)) == rsk1)
+# vertex.label[idx] <- "ARSK1"
+
+plot(g,
+     layout = coords,
+     edge.arrow.size=.1,
+     edge.curved=seq(-0.5, 0.5, length = ecount(g)),
+     vertex.label.dist=0.6,
+     vertex.label.cex=0.7,
+     vertex.label.color = "black",
+     vertex.label=vertex.label,edge.width=E(g)$weight)#, main = paste(v.tissues[s], " / ", names(l.grn_treatment[[s]])[i], " / ", v.domains[d], sep =""))
+
+legend("bottomleft", legend=specificity , col = cols_specificity , bty = "n", pch="-" , pt.cex = 2, cex = 0.8, horiz = FALSE, inset = c(-0.1, 0.2))
+
+# vertex type
+legend("bottomleft", legend=c("Transcrition factor", "ARSK1", "Other gene") , col = "black" , bty = "n", pch=c(16, 17, 15), pt.cex = 1, cex = 0.8, horiz = FALSE, inset = c(-0.1, 0.1))
+# 13 * 20
 
 
 #### subplot -P+Fe
@@ -329,7 +335,7 @@ legend("bottomleft", legend=c("Transcrition factor", "RSK1", "Other gene") , col
 ERF036 = "AT3G16280"
 ERF037 = "AT1G77200"
 MYB49 = "AT5G54230"
-RSK1 = "AT2G26290"
+ARSK1 = "AT2G26290"
 
 
 df <- subset(df.grn, df.grn$spec %in% c(1,4))
@@ -367,13 +373,13 @@ V(g)$shape <- ifelse(names(V(g)) == rsk1, "triangle" , ifelse(names(V(g)) %in% t
 
 vertex.label <- ifelse(names(V(g)) %in% tfs.final, v.regs[names(V(g))] , "")  # TODO: this might not work?
 idx <- which(names(V(g)) == rsk1)
-vertex.label[idx] <- "RSK1"
+vertex.label[idx] <- "ARSK1"
 
 V(g)$label.cex <- 0.7
-V(g)[ERF036]$label.cex <- 1.4
-V(g)[ERF037]$label.cex <- 1.4
-V(g)[MYB49]$label.cex<- 1.4
-V(g)[RSK1]$label.cex <- 1.4
+V(g)[ERF036]$label.cex <- 1.
+V(g)[ERF037]$label.cex <- 1.
+V(g)[MYB49]$label.cex<- 1.
+V(g)[ARSK1]$label.cex <- 1.
 
 set.seed(7)
 plot(g, edge.arrow.size=.1,  # 10 x 10 
