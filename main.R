@@ -217,7 +217,8 @@ df.grn.result["specifity"] <- specificity[df.grn$spec]
 
 message("ensemble based grn with specificity with ", nrow(df.grn.result), " links, containing ", length(unique(df.grn.result$TF)), " TFs and ", length(unique(df.grn.result$TG)), " targets")
 
-write.csv(df.grn.result, paste(folder_output, "df.grn_w_specificity.csv", sep = "/"), row.names = F)
+# write.csv(df.grn.result, paste(folder_output, "df.grn_w_specificity.csv", sep = "/"), row.names = F)
+
 
 #####  
 
@@ -258,7 +259,7 @@ hubs <- hubs / max(hubs)
 # specifitiy of regulation - distribution per hub node! 
 # highlight RSK1 in size
 
-V(g)$size <-  ifelse(names(V(g)) == rsk1, 4, ifelse(names(V(g)) %in% df.grn$TF, hubs[names(V(g))] * 2 + 1, 2))
+V(g)$size <-  ifelse(names(V(g)) == rsk1, 5, ifelse(names(V(g)) %in% df.grn$TF, hubs[names(V(g))] * 2 + 1, 2))
 E(g)$weight <- df.grn$val / max(df.grn$val)
 E(g)$color <- cols_specificity[df.grn$spec]
 V(g)$color <- cols_specificity[gn_spec[names(V(g))]]
@@ -305,29 +306,51 @@ legend("bottomleft", legend=c("Transcrition factor", "ARSK1", "Other gene") , co
 # 
 
 
+     # Paper size
+
 set.seed(9999)
 coords <- layout_(g, with_dh())
 
 #vertex.label <- ifelse(names(V(g)) %in% tfs.final, names(V(g)) , "") 
-vertex.label <- ifelse(names(V(g)) %in% tfs.final, paste(v.regs[names(V(g))], "(", names(V(g)), ")", sep ="") , "")  # TODO: this might not work?
-# idx <- which(names(V(g)) == rsk1)
-# vertex.label[idx] <- "ARSK1"
+
+# label with TF IDs and names
+#vertex.label <- ifelse(names(V(g)) %in% tfs.final, paste(v.regs[names(V(g))], "(", names(V(g)), ")", sep ="") , "")  # TODO: this might not work?
+
+# label with IDs only 
+vertex.label <- ifelse(names(V(g)) %in% tfs.final, names(V(g)) , "") 
+
+idx <- which(names(V(g)) == rsk1)
+vertex.label[idx] <- "ARSK1"
+
+vertex.label.cex <- rep(0.5, length(vertex.label))
+vertex.label.cex[idx] <- 0.6
+
+vertex.label.font <- rep(1, length(vertex.label))
+vertex.label.font[idx] <- 2
+
+
+png("specificity_network_graph_wo_bg.png",         # File name
+    width=7,height=6,units="in",res=200,
+    #width=800,height=700,units="px", # Width and height in inches
+    bg = "transparent")          # Background color
 
 plot(g,
      layout = coords,
      edge.arrow.size=.1,
      edge.curved=seq(-0.5, 0.5, length = ecount(g)),
      vertex.label.dist=0.6,
-     vertex.label.cex=0.7,
+     vertex.label.cex=vertex.label.cex,
+     vertex.label.family="Arial", 
+     vertex.label.font=vertex.label.font,
      vertex.label.color = "black",
      vertex.label=vertex.label,edge.width=E(g)$weight)#, main = paste(v.tissues[s], " / ", names(l.grn_treatment[[s]])[i], " / ", v.domains[d], sep =""))
 
-legend("bottomleft", legend=specificity , col = cols_specificity , bty = "n", pch="-" , pt.cex = 2, cex = 0.8, horiz = FALSE, inset = c(-0.1, 0.2))
+legend("bottomleft", legend=specificity , col = cols_specificity , bty = "n", pch="-" , pt.cex = 2, cex = 0.5, horiz = FALSE, inset = c(-0.05, 0.2))
 
 # vertex type
-legend("bottomleft", legend=c("Transcrition factor", "ARSK1", "Other gene") , col = "black" , bty = "n", pch=c(16, 17, 15), pt.cex = 1, cex = 0.8, horiz = FALSE, inset = c(-0.1, 0.1))
+legend("bottomleft", legend=c("Transcrition factor", "ARSK1", "Other gene") , col = "black" , bty = "n", pch=c(16, 17, 15), pt.cex = 1, cex = 0.5, horiz = FALSE, inset = c(-0.05, 0.1))
 # 13 * 20
-
+dev.off()
 
 #### subplot -P+Fe
 

@@ -38,7 +38,8 @@ v.repeats.root <- v.repeats[i.set]
 m.fc.root <- m.fc.root[intersect(rownames(m.fc.root), gns.DE),] # 175 genes 
 # m.expression.root <- m.expression.root[intersect(rownames(m.fc.root), gns.DE),]
 
-
+# write.csv(as.data.frame(m.fc.root), "differential_expression_root.csv",  row.names = T)
+# write.csv(df.root_selection, "meta_expression_root_series_treatments_repeats.csv")
 
 tfs.rf <- intersect(rownames(m.fc.root), names(v.regulators))
 tgs.rf <- rownames(m.fc.root)
