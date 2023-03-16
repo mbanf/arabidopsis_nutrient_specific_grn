@@ -79,5 +79,6 @@ F_m2 <- m.de
 
 
 
-
-
+# v.mirna <- c("ath-MIR173", "ath-MIR169c")
+# write.csv(as.data.frame(m.anova.set[!rownames(m.anova.set) %in%  v.mirna,]), "anova_nutrient_specific_expression.csv",  row.names = T)
+# write.csv(as.data.frame(m.de[!rownames(m.de) %in%  v.mirna,]), "nutrient_specific_differential_expression.csv",  row.names = T)
