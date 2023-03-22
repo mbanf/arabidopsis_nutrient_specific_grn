@@ -7,3 +7,6 @@ R scripts to produce the nutrient (phosphate, iron) specific gene regulatory net
 
 All relevant data, results and supplement can be found at https://1drv.ms/u/s!Avm82Xhe9EZj60xtvfm5j70CH20x?e=zCjjtS
 
+(Note: To recreate exact network layouts from inferred gene regulatory network (stored in "df.grn_w_specificity.csv"), use defined dependency versions, i.e. R: v3.6.2, 
+igraph: v1.2.6.)
+
